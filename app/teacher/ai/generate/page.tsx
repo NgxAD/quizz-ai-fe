@@ -24,6 +24,7 @@ export default function GenerateAIPage() {
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [quizInfo, setQuizInfo] = useState({ quizId: '', quizTitle: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +51,7 @@ export default function GenerateAIPage() {
         quizTitle: response.data.quizTitle,
       });
       setSuccess(
-        `Đã sinh ${response.data.count} câu hỏi thành công. Vui lòng duyệt trước khi sử dụng.`,
+        `Đã sinh ${response.data.count} câu hỏi thành công. Bấm "Lưu" để lưu vào hệ thống.`,
       );
       setShowPreview(true);
     } catch (err: any) {
@@ -58,6 +59,37 @@ export default function GenerateAIPage() {
       setError(`Lỗi: ${errorMessage}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveQuestions = async () => {
+    if (!quizInfo.quizId) {
+      setError('Không có quizId. Vui lòng tạo đề lại.');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const response = await aiApi.saveQuestions({
+        quizId: quizInfo.quizId,
+        questions: generatedQuestions,
+      });
+
+      setSuccess(`✓ Đã lưu ${response.data.count} câu hỏi thành công!`);
+      setGeneratedQuestions([]);
+      setShowPreview(false);
+
+      // Redirect to questions management after 2 seconds
+      setTimeout(() => {
+        router.push('/teacher/questions');
+      }, 2000);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Lỗi không xác định';
+      setError(`Lỗi: ${errorMessage}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -185,10 +217,17 @@ export default function GenerateAIPage() {
                 Tạo lại
               </button>
               <button
+                onClick={handleSaveQuestions}
+                disabled={isSaving}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {isSaving ? '⏳ Đang lưu...' : '💾 Lưu vào hệ thống'}
+              </button>
+              <button
                 onClick={() => router.push('/teacher/questions')}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700"
               >
-                Lưu và quản lý câu hỏi
+                Quản lý câu hỏi
               </button>
             </div>
           </div>

@@ -29,8 +29,17 @@ export interface GenerateResponse {
 }
 
 const aiApi = {
-  generateQuestions: (payload: AIGeneratePayload) =>
-    axiosClient.post<GenerateResponse>('/ai/generate-questions', payload),
+  generateQuestions: (payload: {
+    customPrompt: string;
+    language?: string;
+  }) =>
+    axiosClient.post<any>('/ai/generate-questions', payload),
+
+  saveQuestions: (payload: {
+    quizId: string;
+    questions: any[];
+  }) =>
+    axiosClient.post<any>('/ai/save-questions', payload),
 
   previewQuestions: (payload: Omit<AIGeneratePayload, 'quizId'>) =>
     axiosClient.post<GenerateResponse>('/ai/preview-questions', payload),
