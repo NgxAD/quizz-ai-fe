@@ -151,21 +151,21 @@ export default function ExamsListPage() {
             <table className="w-full">
               <thead className="bg-gray-100 border-b">
                 <tr>
-                  <th className="text-left p-4 font-semibold text-gray-700">Tên đề</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Mô tả</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Thời gian (phút)</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Điểm đạt (%)</th>
-                  <th className="text-center p-4 font-semibold text-gray-700">Trạng thái</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Hành động</th>
+                  <th className="text-left p-4 font-semibold text-black">Tên đề</th>
+                  <th className="text-left p-4 font-semibold text-black">Mô tả</th>
+                  <th className="text-left p-4 font-semibold text-black">Thời gian (phút)</th>
+                  <th className="text-left p-4 font-semibold text-black">Điểm đạt (%)</th>
+                  <th className="text-center p-4 font-semibold text-black">Trạng thái</th>
+                  <th className="text-left p-4 font-semibold text-black">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {exams.map((exam) => (
                   <tr key={exam._id} className="border-b hover:bg-gray-50">
-                    <td className="p-4 text-gray-900">{exam.title}</td>
-                    <td className="p-4 text-gray-600">{exam.description || '-'}</td>
-                    <td className="p-4 text-gray-600">{exam.duration || '-'}</td>
-                    <td className="p-4 text-gray-600">{exam.passingPercentage || '-'}</td>
+                    <td className="p-4 text-black">{exam.title}</td>
+                    <td className="p-4 text-black">{exam.description || '-'}</td>
+                    <td className="p-4 text-black">{exam.duration || '-'}</td>
+                    <td className="p-4 text-black">{exam.passingPercentage || '-'}</td>
                     <td className="p-4 text-center">
                       {exam.isPublished ? (
                         <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
@@ -179,7 +179,7 @@ export default function ExamsListPage() {
                     </td>
                     <td className="p-4 space-x-2">
                       <Link
-                        href={`/teacher/exams/edit/${exam._id}`}
+                        href={`/teacher/exams/${exam._id}/edit`}
                         className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
                       >
                         Sửa
@@ -236,7 +236,7 @@ export default function ExamsListPage() {
                 <select
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                 >
                   <option value="">-- Chọn lớp --</option>
                   {classes.map((cls) => (

@@ -8,12 +8,23 @@ export interface ExamPayload {
   questionIds?: string[];
 }
 
+export interface Question {
+  _id?: string;
+  content: string;
+  type: string;
+  options?: Array<{ text: string; isCorrect: boolean }>;
+  correctAnswer?: string;
+  explanation?: string;
+}
+
 export interface Exam extends ExamPayload {
   _id: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   isPublished?: boolean;
+  questions?: Question[];
+  totalQuestions?: number;
 }
 
 const examApi = {

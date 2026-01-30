@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import TeacherLayout from '@/layouts/TeacherLayout';
-import examApi from '@/api/exam.api';
+import examApi, { Exam as ExamType, Question as QuestionType } from '@/api/exam.api';
 
 interface Exam {
   _id: string;
@@ -11,6 +11,7 @@ interface Exam {
   description?: string;
   duration?: number;
   passingPercentage?: number;
+  questions?: QuestionType[];
 }
 
 interface Question {
@@ -50,8 +51,18 @@ export default function EditExamPage() {
       try {
         const response = await examApi.getById(examId!);
         setExam(response.data);
-        // Note: questions are loaded separately from the exam
-        // For now, we start with an empty questions array
+        
+        // Load questions from the exam response
+        if (response.data.questions && Array.isArray(response.data.questions)) {
+          const loadedQuestions = response.data.questions.map((q: any) => ({
+            _id: q._id,
+            content: q.content,
+            type: q.type || 'multiple-choice',
+            options: q.options || [],
+            answer: q.correctAnswer || (q.options && q.options.find((opt: any) => opt.isCorrect)?.text),
+          }));
+          setQuestions(loadedQuestions);
+        }
       } catch (err: any) {
         console.error('Error loading exam:', err);
         setError('Không thể tải dữ liệu đề');
@@ -295,26 +306,28 @@ export default function EditExamPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">
-                    Loại câu hỏi
-                  </label>
-                  <select
-                    value={questionForm.type}
-                    onChange={(e) => {
-                      const newType = e.target.value as Question['type'];
-                      setQuestionForm({ ...questionForm, type: newType });
-                    }}
-                    className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="multiple-choice">Trắc nghiệm (Multiple Choice)</option>
-                    <option value="short-answer">Trả lời ngắn (Short Answer)</option>
-                    <option value="essay">Tự luận (Essay)</option>
-                  </select>
-                </div>
+                {editingIndex === null && (
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-2">
+                      Loại câu hỏi
+                    </label>
+                    <select
+                      value={questionForm.type}
+                      onChange={(e) => {
+                        const newType = e.target.value as Question['type'];
+                        setQuestionForm({ ...questionForm, type: newType });
+                      }}
+                      className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="multiple-choice">Trắc nghiệm (Multiple Choice)</option>
+                      <option value="short-answer">Trả lời ngắn (Short Answer)</option>
+                      <option value="essay">Tự luận (Essay)</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Multiple Choice Options */}
-                {questionForm.type === 'multiple-choice' && (
+                {(questionForm.type === 'multiple-choice' || (questionForm.options && questionForm.options.length > 0)) && (
                   <div>
                     <label className="block text-gray-700 font-semibold mb-3">
                       Đáp án (chọn đáp án đúng)
@@ -411,15 +424,6 @@ export default function EditExamPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">
                       Câu {idx + 1}: {question.content}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Loại: {
-                        question.type === 'multiple-choice'
-                          ? 'Trắc nghiệm'
-                          : question.type === 'short-answer'
-                          ? 'Trả lời ngắn'
-                          : 'Tự luận'
-                      }
                     </p>
 
                     {question.type === 'multiple-choice' && question.options && (

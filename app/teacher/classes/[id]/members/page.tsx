@@ -42,6 +42,18 @@ export default function ClassMembersPage() {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Helper function to safely format date
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('vi-VN');
+    } catch {
+      return 'N/A';
+    }
+  };
+
   useEffect(() => {
     loadClassAndMembers();
   }, [classId]);
@@ -216,7 +228,7 @@ export default function ClassMembersPage() {
                             <td className="p-4 font-semibold text-gray-900">{student.fullName}</td>
                             <td className="p-4 text-gray-600">{student.email}</td>
                             <td className="p-4 text-gray-600">
-                              {new Date(student.joinedAt).toLocaleDateString('vi-VN')}
+                              {formatDate(student.joinedAt)}
                             </td>
                             <td className="p-4 text-right">
                               <button

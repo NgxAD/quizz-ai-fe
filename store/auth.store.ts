@@ -8,6 +8,10 @@ export interface User {
   fullName: string;
   role: 'teacher' | 'student' | 'admin';
   avatar?: string;
+  isTeacherApproved?: boolean;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+  gender?: string;
 }
 
 interface AuthState {
@@ -22,6 +26,7 @@ interface AuthState {
   login: (user: User, token: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
+  updateUser: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -64,6 +69,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setLoading: (loading) => set({ isLoading: loading }),
+
+      updateUser: (user) => {
+        Cookies.set('user', JSON.stringify(user), { expires: 1 });
+        set({ user });
+      },
     }),
     {
       name: 'auth-store',

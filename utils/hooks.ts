@@ -32,7 +32,7 @@ export const useTeacherRoute = () => {
     const timer = setTimeout(() => {
       if (!isLoggedIn) {
         router.push('/login');
-      } else if (user?.role !== 'teacher') {
+      } else if (user?.role?.toLowerCase() !== 'teacher') {
         router.push('/student/exams');
       }
       setIsChecked(true);
@@ -54,8 +54,30 @@ export const useStudentRoute = () => {
     const timer = setTimeout(() => {
       if (!isLoggedIn) {
         router.push('/login');
-      } else if (user?.role !== 'student') {
+      } else if (user?.role?.toLowerCase() !== 'student') {
         router.push('/teacher/dashboard');
+      }
+      setIsChecked(true);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [isLoggedIn, user, router]);
+
+  return { isChecked };
+};
+
+export const useAdminRoute = () => {
+  const router = useRouter();
+  const { isLoggedIn, user } = useAuthStore();
+  const [isChecked, setIsChecked] = useState(false);
+
+  useEffect(() => {
+    // Wait a tick to ensure store is hydrated
+    const timer = setTimeout(() => {
+      if (!isLoggedIn) {
+        router.push('/login');
+      } else if (user?.role?.toLowerCase() !== 'admin') {
+        router.push('/student/exams');
       }
       setIsChecked(true);
     }, 0);

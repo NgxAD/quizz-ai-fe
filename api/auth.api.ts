@@ -34,6 +34,15 @@ const authApi = {
   googleLogin: (code: string) =>
     axiosClient.post<AuthResponse>('/auth/google', { code }),
 
+  updateRole: (role: 'student' | 'teacher' | 'admin') =>
+    axiosClient.post<AuthResponse>('/auth/update-role', { role }),
+
+  downgradeTeacher: () =>
+    axiosClient.post<AuthResponse>('/auth/downgrade-teacher'),
+
+  updateProfile: (payload: any) =>
+    axiosClient.patch('/auth/profile', payload),
+
   logout: () => {
     // Clear token from cookies
     document.cookie = 'accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
