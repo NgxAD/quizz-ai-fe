@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TeacherLayout from '@/layouts/TeacherLayout';
+import MathSymbolPicker from '@/components/MathSymbolPicker';
 import examApi from '@/api/exam.api';
 
 interface Question {
@@ -11,6 +12,7 @@ interface Question {
   type: 'MULTIPLE_CHOICE' | 'ESSAY';
   options: string[];
   correctAnswer: number;
+  image?: string; // base64 image data
 }
 
 export default function ComposeExamPage() {
@@ -28,6 +30,132 @@ export default function ComposeExamPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [focusedInputType, setFocusedInputType] = useState<'title' | 'content' | `option-${number}` | null>(null);
+
+  const titleRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const optionRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
+
+  // Insert symbol vào focused input
+  const insertSymbol = (symbol: string) => {
+    if (!focusedInputType) return;
+
+    if (focusedInputType === 'title' && titleRef.current) {
+      const input = titleRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newValue = examTitle.substring(0, start) + symbol + examTitle.substring(end);
+      setExamTitle(newValue);
+      setTimeout(() => {
+        if (titleRef.current) {
+          titleRef.current.focus();
+          titleRef.current.setSelectionRange(start + symbol.length, start + symbol.length);
+        }
+      }, 0);
+    } else if (focusedInputType === 'content' && contentRef.current) {
+      const input = contentRef.current;
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const currentContent = currentQuestion.content || '';
+      const newValue = currentContent.substring(0, start) + symbol + currentContent.substring(end);
+      setCurrentQuestion({ ...currentQuestion, content: newValue });
+      setTimeout(() => {
+        if (contentRef.current) {
+          contentRef.current.focus();
+          contentRef.current.setSelectionRange(start + symbol.length, start + symbol.length);
+        }
+      }, 0);
+    } else if (focusedInputType?.startsWith('option-')) {
+      const optionIdx = parseInt(focusedInputType.split('-')[1]);
+      if (optionRefs.current[optionIdx]) {
+        const input = optionRefs.current[optionIdx]!;
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const options = [...(currentQuestion.options || [])];
+        const newValue = options[optionIdx].substring(0, start) + symbol + options[optionIdx].substring(end);
+        options[optionIdx] = newValue;
+        setCurrentQuestion({ ...currentQuestion, options });
+        setTimeout(() => {
+          if (optionRefs.current[optionIdx]) {
+            optionRefs.current[optionIdx]!.focus();
+            optionRefs.current[optionIdx]!.setSelectionRange(start + symbol.length, start + symbol.length);
+          }
+        }, 0);
+      }
+    }
+  };
+
+  // Handle image upload for question
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Ảnh phải nhỏ hơn 5MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chọn tập tin ảnh');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      setCurrentQuestion({ ...currentQuestion, image: base64String });
+      setError('');
+      setSuccess('✓ Ảnh đã được thêm');
+      setTimeout(() => setSuccess(''), 2000);
+    };
+    reader.onerror = () => {
+      setError('Lỗi khi tải ảnh. Vui lòng thử lại.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle paste image directly into textarea
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          setError('Ảnh phải nhỏ hơn 5MB');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64String = event.target?.result as string;
+          setCurrentQuestion({ ...currentQuestion, image: base64String });
+          setError('');
+          setSuccess('✓ Ảnh đã được dán vào');
+          setTimeout(() => setSuccess(''), 2000);
+        };
+        reader.onerror = () => {
+          setError('Lỗi khi dán ảnh. Vui lòng thử lại.');
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  };
+
+  const removeImage = () => {
+    setCurrentQuestion({ ...currentQuestion, image: undefined });
+    setSuccess('✓ Ảnh đã bị xóa');
+    setTimeout(() => setSuccess(''), 2000);
+  };
 
   // Generate unique ID
   const generateId = () => {
@@ -79,6 +207,7 @@ export default function ComposeExamPage() {
       type: currentQuestion.type || 'MULTIPLE_CHOICE',
       options: currentQuestion.options || [],
       correctAnswer: currentQuestion.correctAnswer || 0,
+      image: currentQuestion.image,
     };
 
     setQuestions([...questions, question]);
@@ -86,6 +215,7 @@ export default function ComposeExamPage() {
       type: 'MULTIPLE_CHOICE',
       options: ['', '', '', ''],
       correctAnswer: 0,
+      image: undefined,
     });
     setError('');
     setSuccess('✓ Đã thêm câu hỏi');
@@ -116,6 +246,7 @@ export default function ComposeExamPage() {
               type: currentQuestion.type || 'MULTIPLE_CHOICE',
               options: currentQuestion.options || [],
               correctAnswer: currentQuestion.correctAnswer || 0,
+              image: currentQuestion.image,
             } as Question)
           : q,
       );
@@ -125,6 +256,7 @@ export default function ComposeExamPage() {
         type: 'MULTIPLE_CHOICE',
         options: ['', '', '', ''],
         correctAnswer: 0,
+        image: undefined,
       });
       setSuccess('✓ Đã cập nhật câu hỏi');
       setTimeout(() => setSuccess(''), 2000);
@@ -142,6 +274,7 @@ export default function ComposeExamPage() {
         type: 'MULTIPLE_CHOICE',
         options: ['', '', '', ''],
         correctAnswer: 0,
+        image: undefined,
       });
     }
   };
@@ -171,6 +304,7 @@ export default function ComposeExamPage() {
           options: q.options,
           correctAnswer: q.correctAnswer,
           type: q.type,
+          image: q.image,
         })),
       };
 
@@ -217,13 +351,18 @@ export default function ComposeExamPage() {
           <label className="block text-gray-700 font-semibold mb-2">
             Tên đề <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            value={examTitle}
-            onChange={(e) => setExamTitle(e.target.value)}
-            placeholder="Nhập tên đề"
-            className="w-full border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="flex gap-2 items-end">
+            <input
+              ref={titleRef}
+              type="text"
+              value={examTitle}
+              onChange={(e) => setExamTitle(e.target.value)}
+              onFocus={() => setFocusedInputType('title')}
+              placeholder="Nhập tên đề"
+              className="flex-1 border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 select-text"
+            />
+            <MathSymbolPicker onSymbolSelect={insertSymbol} />
+          </div>
         </div>
 
         {/* Main Content */}
@@ -240,18 +379,64 @@ export default function ComposeExamPage() {
                 <label className="block text-gray-700 font-semibold mb-2">
                   Nội dung câu hỏi
                 </label>
-                <textarea
-                  value={currentQuestion.content || ''}
-                  onChange={(e) =>
-                    setCurrentQuestion({
-                      ...currentQuestion,
-                      content: e.target.value,
-                    })
-                  }
-                  placeholder="Nhập nội dung câu hỏi"
-                  rows={4}
-                  className="w-full border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                />
+                <div className="flex gap-2">
+                  <textarea
+                    ref={contentRef}
+                    value={currentQuestion.content || ''}
+                    onChange={(e) =>
+                      setCurrentQuestion({
+                        ...currentQuestion,
+                        content: e.target.value,
+                      })
+                    }
+                    onFocus={() => setFocusedInputType('content')}
+                    onPaste={handlePaste}
+                    placeholder="Nhập nội dung câu hỏi"
+                    rows={4}
+                    className="flex-1 border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none select-text"
+                  />
+                  <div className="flex flex-col items-center gap-2 pt-1">
+                    <MathSymbolPicker onSymbolSelect={insertSymbol} />
+                    <label className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const input = (e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement);
+                          input?.click();
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white px-2 py-2 rounded text-sm font-semibold transition w-full"
+                        title="Chèn ảnh"
+                      >
+                        🖼️
+                      </button>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Image Preview */}
+                {currentQuestion.image && (
+                  <div className="mt-3 relative inline-block">
+                    <img
+                      src={currentQuestion.image}
+                      alt="Question preview"
+                      className="max-w-xs max-h-48 rounded-lg border border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold transition"
+                      title="Xóa ảnh"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Options */}
@@ -262,11 +447,12 @@ export default function ComposeExamPage() {
                   </label>
                   <div className="space-y-2">
                     {(currentQuestion.options || []).map((opt, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
+                      <div key={idx} className="flex items-center gap-2">
                         <span className="w-8 h-8 flex items-center justify-center bg-blue-100 rounded font-semibold text-blue-700 flex-shrink-0">
                           {String.fromCharCode(65 + idx)}
                         </span>
                         <input
+                          ref={(el) => { optionRefs.current[idx] = el; }}
                           type="text"
                           value={opt}
                           onChange={(e) => {
@@ -279,9 +465,13 @@ export default function ComposeExamPage() {
                               options: newOptions,
                             });
                           }}
+                          onFocus={() => setFocusedInputType(`option-${idx}` as const)}
                           placeholder={`Tùy chọn ${String.fromCharCode(65 + idx)}`}
-                          className="flex-1 border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 border rounded-lg p-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 select-text"
                         />
+                        <div className="flex-shrink-0">
+                          <MathSymbolPicker onSymbolSelect={insertSymbol} />
+                        </div>
                         <input
                           type="radio"
                           name="correct"
@@ -342,6 +532,17 @@ export default function ComposeExamPage() {
                       {currentQuestion.content}
                     </p>
                   </div>
+
+                  {/* Preview Image */}
+                  {currentQuestion.image && (
+                    <div className="mt-3">
+                      <img
+                        src={currentQuestion.image}
+                        alt="Question preview"
+                        className="max-w-full max-h-40 rounded-lg border border-gray-300"
+                      />
+                    </div>
+                  )}
 
                   {/* Preview Options */}
                   {currentQuestion.type === 'MULTIPLE_CHOICE' && (
@@ -407,6 +608,13 @@ export default function ComposeExamPage() {
                           <p className="text-sm text-gray-600 truncate">
                             {q.content}
                           </p>
+                          {q.image && (
+                            <img
+                              src={q.image}
+                              alt="Question"
+                              className="mt-2 h-16 rounded border border-gray-300 object-cover"
+                            />
+                          )}
                           <p className="text-xs text-gray-500 mt-1">
                             Trắc nghiệm
                           </p>

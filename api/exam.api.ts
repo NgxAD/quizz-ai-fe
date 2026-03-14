@@ -15,6 +15,7 @@ export interface Question {
   options?: Array<{ text: string; isCorrect: boolean }>;
   correctAnswer?: string;
   explanation?: string;
+  image?: string; // base64 image data
 }
 
 export interface Exam extends ExamPayload {
@@ -25,6 +26,9 @@ export interface Exam extends ExamPayload {
   isPublished?: boolean;
   questions?: Question[];
   totalQuestions?: number;
+  fileContent?: string; // Nội dung file đề (nếu tạo từ file)
+  fileName?: string; // Tên file gốc
+  examType?: 'exercise' | 'test'; // exercise: can retake & see answers, test: one time only
 }
 
 const examApi = {
@@ -59,6 +63,8 @@ const examApi = {
     duration?: number;
     passingPercentage?: number;
     questions: any[];
+    fileContent?: string;
+    fileName?: string;
   }) =>
     axiosClient.post<Exam>('/exams/create-from-questions', payload),
 
@@ -69,8 +75,17 @@ const examApi = {
       },
     }),
 
-  list: () =>
-    axiosClient.get<Exam[]>('/exams'),
+  uploadAndCreateStructure: (formData: FormData) =>
+    axiosClient.post<Exam>('/exams/upload-and-create-structure', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+
+  list: (status?: 'draft' | 'published') => {
+    const url = status ? `/exams?status=${status}` : '/exams';
+    return axiosClient.get<Exam[]>(url);
+  },
 
   getById: (id: string) =>
     axiosClient.get<Exam>(`/exams/${id}`),

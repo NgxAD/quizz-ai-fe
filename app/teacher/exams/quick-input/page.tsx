@@ -95,8 +95,11 @@ export default function QuickInputExamPage() {
         passingPercentage: formData.passingPercentage ? parseInt(formData.passingPercentage) : 50,
         questions: questions.map((q) => ({
           content: q.content,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
+          // Convert string array + correctAnswer index to object array {text, isCorrect}
+          options: q.options.map((opt, idx) => ({
+            text: opt,
+            isCorrect: idx === q.correctAnswer,
+          })),
         })),
       };
 
@@ -278,29 +281,36 @@ D) Tất cả đều đúng
                       />
                     ) : (
                       <>
-                        <div className="mb-3">
-                          <p className="font-semibold text-gray-700">
+                        <div className="mb-4">
+                          <p className="font-semibold text-gray-800 text-base">
                             Câu {index + 1}: {question.content}
                           </p>
                         </div>
-                        <div className="space-y-2 mb-3">
+                        <div className="space-y-2 mb-4 bg-gray-50 p-3 rounded-lg">
                           {question.options.map((option, optIdx) => (
-                            <div
+                            <label
                               key={optIdx}
-                              className={`p-2 rounded ${
-                                optIdx === question.correctAnswer
-                                  ? 'bg-green-100 border border-green-300'
-                                  : 'bg-gray-100'
-                              }`}
+                              className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 cursor-pointer"
                             >
-                              <span className="font-medium">
+                              <input
+                                type="radio"
+                                name={`answer-${index}`}
+                                checked={optIdx === question.correctAnswer}
+                                onChange={() => {
+                                  const newQuestions = [...questions];
+                                  newQuestions[index].correctAnswer = optIdx;
+                                  setQuestions(newQuestions);
+                                }}
+                                className="w-4 h-4 accent-green-600"
+                              />
+                              <span className="font-medium text-gray-700 w-8">
                                 {String.fromCharCode(65 + optIdx)})
-                              </span>{' '}
-                              {option}
+                              </span>
+                              <span className="flex-1 text-gray-700">{option}</span>
                               {optIdx === question.correctAnswer && (
-                                <span className="ml-2 text-green-700 font-semibold">✓ Đáp án</span>
+                                <span className="text-green-600 font-semibold text-sm">✓</span>
                               )}
-                            </div>
+                            </label>
                           ))}
                         </div>
                         <div className="flex gap-2">
@@ -309,7 +319,7 @@ D) Tất cả đều đúng
                             onClick={() => setEditingQuestion(index)}
                             className="text-blue-600 hover:underline text-sm"
                           >
-                            ✏ Sửa
+                            ✏ Sửa nội dung
                           </button>
                           <button
                             type="button"

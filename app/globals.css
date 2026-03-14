@@ -19,8 +19,35 @@
   }
 }
 
+/* Support for special Unicode characters in input and textarea */
+input[type="text"],
+input[type="email"],
+input[type="search"],
+input[type="password"],
+textarea,
+select {
+  font-family: 'Segoe UI', 'Noto Sans', 'Courier New', monospace !important;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -webkit-text-size-adjust: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-variant-numeric: normal;
+  font-feature-settings: 'kern' 1;
+}
+
+/* Ensure special characters display correctly */
+input[type="text"],
+textarea {
+  text-rendering: optimizeLegibility;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Segoe UI', 'Noto Sans', Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: subpixel-antialiased;
+  -webkit-text-size-adjust: none;
 }

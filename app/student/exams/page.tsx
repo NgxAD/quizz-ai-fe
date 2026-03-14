@@ -40,7 +40,7 @@ export default function StudentExamsPage() {
     <StudentLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Các bài kiểm tra</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Các lớp của tôi</h1>
           <button
             onClick={() => router.push('/student/join-class')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
@@ -75,7 +75,8 @@ export default function StudentExamsPage() {
             {classes.map((classItem) => (
               <div
                 key={classItem._id}
-                className="bg-white rounded-lg shadow-md hover:shadow-lg transition overflow-hidden"
+                onClick={() => router.push(`/student/classes/${classItem._id}`)}
+                className="bg-white rounded-lg shadow-md hover:shadow-lg transition overflow-hidden cursor-pointer"
               >
                 <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 text-white">
                   <h3 className="text-xl font-bold">{classItem.name}</h3>
@@ -85,15 +86,9 @@ export default function StudentExamsPage() {
                   {classItem.description && (
                     <p className="text-gray-600 text-sm mb-3">{classItem.description}</p>
                   )}
-                  <p className="text-gray-500 text-sm mb-4">
+                  <p className="text-gray-500 text-sm">
                     👥 {classItem.studentCount} học sinh
                   </p>
-                  <button
-                    onClick={() => router.push(`/student/classes/${classItem._id}/exams`)}
-                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-                  >
-                    Xem bài kiểm tra
-                  </button>
                 </div>
               </div>
             ))}

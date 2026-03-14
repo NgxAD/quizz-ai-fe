@@ -11,15 +11,17 @@ interface Exam {
   description?: string;
   duration?: number;
   passingPercentage?: number;
+  type?: 'exercise' | 'test';
   questions?: QuestionType[];
 }
 
 interface Question {
   _id?: string;
   content: string;
-  type: 'multiple-choice' | 'essay' | 'short-answer';
+  type: 'multiple_choice' | 'short_answer' | 'true_false';
   options?: Array<{ text: string; isCorrect: boolean }>;
-  answer?: string;
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 export default function EditExamPage() {
@@ -36,7 +38,7 @@ export default function EditExamPage() {
 
   const [questionForm, setQuestionForm] = useState<Question>({
     content: '',
-    type: 'multiple-choice',
+    type: 'multiple_choice',
     options: [
       { text: '', isCorrect: false },
       { text: '', isCorrect: false },
@@ -57,9 +59,10 @@ export default function EditExamPage() {
           const loadedQuestions = response.data.questions.map((q: any) => ({
             _id: q._id,
             content: q.content,
-            type: q.type || 'multiple-choice',
+            type: q.type || 'multiple_choice',
             options: q.options || [],
-            answer: q.correctAnswer || (q.options && q.options.find((opt: any) => opt.isCorrect)?.text),
+            correctAnswer: q.correctAnswer || '',
+            explanation: q.explanation || '',
           }));
           setQuestions(loadedQuestions);
         }
@@ -74,13 +77,13 @@ export default function EditExamPage() {
     }
   }, [examId]);
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = async () => {
     if (!questionForm.content.trim()) {
       setError('Vui lòng nhập nội dung câu hỏi');
       return;
     }
 
-    if (questionForm.type === 'multiple-choice') {
+    if (questionForm.type === 'multiple_choice') {
       const validOptions = questionForm.options?.filter(opt => opt.text.trim());
       if (!validOptions || validOptions.length < 2) {
         setError('Câu hỏi trắc nghiệm cần ít nhất 2 đáp án');
@@ -95,40 +98,56 @@ export default function EditExamPage() {
     }
 
     setError('');
+    setLoading(true);
 
-    if (editingIndex !== null) {
-      const updatedQuestions = [...questions];
-      updatedQuestions[editingIndex] = questionForm;
-      setQuestions(updatedQuestions);
-      setEditingIndex(null);
-    } else {
-      setQuestions([...questions, { ...questionForm, _id: `temp_${Date.now()}` }]);
+    try {
+      if (editingIndex !== null) {
+        // Update existing question
+        const newQuestions = [...questions];
+        newQuestions[editingIndex] = { ...questionForm };
+        setQuestions(newQuestions);
+        setEditingIndex(null);
+      } else {
+        // Add new question
+        setQuestions([...questions, { ...questionForm, _id: `temp_${Date.now()}` }]);
+      }
+
+      // Reset form
+      setQuestionForm({
+        content: '',
+        type: 'multiple_choice',
+        options: [
+          { text: '', isCorrect: false },
+          { text: '', isCorrect: false },
+          { text: '', isCorrect: false },
+          { text: '', isCorrect: false },
+        ],
+      });
+      setShowAddQuestion(false);
+    } catch (err: any) {
+      console.error('Error saving question:', err);
+      setError(err.response?.data?.message || 'Lỗi khi lưu câu hỏi');
+    } finally {
+      setLoading(false);
     }
-
-    // Reset form
-    setQuestionForm({
-      content: '',
-      type: 'multiple-choice',
-      options: [
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-      ],
-    });
-    setShowAddQuestion(false);
-  };
-
-  const handleEditQuestion = (index: number) => {
-    setQuestionForm(questions[index]);
-    setEditingIndex(index);
-    setShowAddQuestion(true);
   };
 
   const handleDeleteQuestion = (index: number) => {
     if (window.confirm('Bạn có chắc muốn xóa câu hỏi này?')) {
       setQuestions(questions.filter((_, i) => i !== index));
     }
+  };
+
+  const mapQuestionForBackend = (question: Question) => {
+    // All questions are now multiple choice only
+    return {
+      _id: question._id,
+      content: question.content,
+      type: 'multiple-choice',
+      options: question.options,
+      answer: '', // For multiple choice, answer is determined by options with isCorrect: true
+      explanation: question.explanation || '',
+    };
   };
 
   const handleSaveExam = async () => {
@@ -146,16 +165,68 @@ export default function EditExamPage() {
     setError('');
 
     try {
-      // Update exam with questions
-      await examApi.updateExamWithQuestions(examId!, {
-        ...exam,
-        questions: questions,
+      // Validate all questions have proper content and options
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.content || q.content.trim() === '') {
+          setError(`Câu ${i + 1}: Vui lòng nhập nội dung câu hỏi`);
+          setLoading(false);
+          return;
+        }
+
+        if (!q.options || q.options.length === 0) {
+          setError(`Câu ${i + 1}: Vui lòng thêm đáp án`);
+          setLoading(false);
+          return;
+        }
+
+        const validOptions = q.options.filter(opt => opt.text && opt.text.trim());
+        if (validOptions.length < 2) {
+          setError(`Câu ${i + 1}: Cần có ít nhất 2 đáp án hợp lệ`);
+          setLoading(false);
+          return;
+        }
+
+        const hasCorrectAnswer = q.options.some(opt => opt.isCorrect);
+        if (!hasCorrectAnswer) {
+          setError(`Câu ${i + 1}: Vui lòng chọn đáp án đúng`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Map questions to backend format and update exam with questions
+      const mappedQuestions = questions.map(mapQuestionForBackend);
+      
+      console.log('Sending payload:', {
+        title: exam.title,
+        description: exam.description,
+        duration: exam.duration,
+        passingPercentage: exam.passingPercentage,
+        type: exam.type,
+        questions: mappedQuestions,
+      });
+      
+      const response = await examApi.updateExamWithQuestions(examId!, {
+        title: exam.title,
+        description: exam.description,
+        duration: exam.duration,
+        passingPercentage: exam.passingPercentage,
+        type: exam.type,
+        questions: mappedQuestions,
       });
 
-      router.push('/teacher/exams/list');
+      // Reload to get the latest data from backend
+      router.push(`/teacher/exams/${examId}`);
     } catch (err: any) {
       console.error('Error saving exam:', err);
-      setError(err.response?.data?.message || 'Lưu đề thất bại');
+      console.error('Error details:', {
+        message: err.message,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+      });
+      setError(err.response?.data?.message || err.message || 'Lưu đề thất bại');
     } finally {
       setLoading(false);
     }
@@ -218,6 +289,20 @@ export default function EditExamPage() {
 
             <div>
               <label className="block text-gray-700 font-semibold mb-2">
+                Loại đề
+              </label>
+              <select
+                value={exam.type || 'exercise'}
+                onChange={(e) => setExam({ ...exam, type: e.target.value as 'exercise' | 'test' })}
+                className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="exercise">📝 Bài tập</option>
+                <option value="test">✅ Bài kiểm tra</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">
                 Mô tả
               </label>
               <textarea
@@ -265,10 +350,9 @@ export default function EditExamPage() {
             <button
               onClick={() => {
                 setShowAddQuestion(true);
-                setEditingIndex(null);
                 setQuestionForm({
                   content: '',
-                  type: 'multiple-choice',
+                  type: 'multiple_choice',
                   options: [
                     { text: '', isCorrect: false },
                     { text: '', isCorrect: false },
@@ -287,7 +371,7 @@ export default function EditExamPage() {
           {showAddQuestion && (
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">
-                {editingIndex !== null ? '✏️ Chỉnh sửa câu hỏi' : '➕ Thêm câu hỏi mới'}
+                ➕ Thêm câu hỏi mới
               </h3>
 
               <div className="space-y-4">
@@ -306,35 +390,30 @@ export default function EditExamPage() {
                   />
                 </div>
 
-                {editingIndex === null && (
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">
-                      Loại câu hỏi
-                    </label>
-                    <select
-                      value={questionForm.type}
-                      onChange={(e) => {
-                        const newType = e.target.value as Question['type'];
-                        setQuestionForm({ ...questionForm, type: newType });
-                      }}
-                      className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="multiple-choice">Trắc nghiệm (Multiple Choice)</option>
-                      <option value="short-answer">Trả lời ngắn (Short Answer)</option>
-                      <option value="essay">Tự luận (Essay)</option>
-                    </select>
-                  </div>
-                )}
-
                 {/* Multiple Choice Options */}
-                {(questionForm.type === 'multiple-choice' || (questionForm.options && questionForm.options.length > 0)) && (
-                  <div>
+                <div>
                     <label className="block text-gray-700 font-semibold mb-3">
                       Đáp án (chọn đáp án đúng)
                     </label>
                     <div className="space-y-2">
                       {questionForm.options?.map((option, idx) => (
-                        <div key={idx} className="flex items-center gap-3">
+                        <div key={idx} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name="correctAnswer"
+                            checked={option.isCorrect}
+                            onChange={(e) => {
+                              const newOptions = [...(questionForm.options || [])];
+                              newOptions.forEach((opt, i) => {
+                                opt.isCorrect = i === idx && e.target.checked;
+                              });
+                              setQuestionForm({
+                                ...questionForm,
+                                options: newOptions,
+                              });
+                            }}
+                            className="w-5 h-5 cursor-pointer accent-green-600"
+                          />
                           <span className="font-semibold text-gray-700 min-w-12">
                             {String.fromCharCode(65 + idx)})
                           </span>
@@ -355,51 +434,20 @@ export default function EditExamPage() {
                             placeholder={`Nhập đáp án ${String.fromCharCode(65 + idx)}`}
                             className="flex-1 border rounded p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
-                          <input
-                            type="checkbox"
-                            checked={option.isCorrect}
-                            onChange={(e) => {
-                              const newOptions = [...(questionForm.options || [])];
-                              newOptions.forEach((opt, i) => {
-                                opt.isCorrect = i === idx ? e.target.checked : false;
-                              });
-                              setQuestionForm({
-                                ...questionForm,
-                                options: newOptions,
-                              });
-                            }}
-                            className="w-5 h-5 cursor-pointer"
-                          />
+                          {option.isCorrect && (
+                            <span className="text-green-600 font-semibold text-sm">✓</span>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
-
-                {/* Short Answer / Essay */}
-                {(questionForm.type === 'short-answer' ||
-                  questionForm.type === 'essay') && (
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-2">
-                      Đáp án mẫu (tuỳ chọn)
-                    </label>
-                    <textarea
-                      value={questionForm.answer || ''}
-                      onChange={(e) =>
-                        setQuestionForm({ ...questionForm, answer: e.target.value })
-                      }
-                      placeholder="Nhập đáp án tham khảo"
-                      className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      rows={3}
-                    />
-                  </div>
-                )}
 
                 <div className="flex gap-3 justify-end">
                   <button
                     onClick={() => {
                       setShowAddQuestion(false);
                       setEditingIndex(null);
+                      setError('');
                     }}
                     className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 transition"
                   >
@@ -407,9 +455,10 @@ export default function EditExamPage() {
                   </button>
                   <button
                     onClick={handleAddQuestion}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingIndex !== null ? 'Cập nhật' : 'Thêm'}
+                    {loading ? '⏳ Đang xử lý...' : editingIndex !== null ? 'Cập nhật' : 'Thêm'}
                   </button>
                 </div>
               </div>
@@ -417,47 +466,88 @@ export default function EditExamPage() {
           )}
 
           {/* Questions List */}
-          <div className="space-y-3">
+          <div className="space-y-6">
             {questions.map((question, idx) => (
-              <div key={question._id || idx} className="bg-white rounded-lg shadow p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">
-                      Câu {idx + 1}: {question.content}
-                    </p>
-
-                    {question.type === 'multiple-choice' && question.options && (
-                      <div className="mt-2 ml-4 space-y-1">
-                        {question.options.map((opt, oIdx) => (
-                          <p
-                            key={oIdx}
-                            className={`text-sm ${
-                              opt.isCorrect ? 'text-green-600 font-semibold' : 'text-gray-600'
-                            }`}
-                          >
-                            {String.fromCharCode(65 + oIdx)}) {opt.text}
-                            {opt.isCorrect && ' ✓'}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEditQuestion(idx)}
-                      className="px-3 py-1 text-blue-600 hover:bg-blue-50 rounded transition"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDeleteQuestion(idx)}
-                      className="px-3 py-1 text-red-600 hover:bg-red-50 rounded transition"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+              <div key={question._id || idx} className="bg-white rounded-lg shadow p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Câu {idx + 1}
+                  </h3>
+                  <button
+                    onClick={() => handleDeleteQuestion(idx)}
+                    className="text-red-600 hover:text-red-700 font-bold transition"
+                    title="Xóa"
+                  >
+                    🗑️
+                  </button>
                 </div>
+
+                {/* Question Content */}
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-2">
+                    Nội dung câu hỏi
+                  </label>
+                  <textarea
+                    value={question.content}
+                    onChange={(e) => {
+                      const newQuestions = [...questions];
+                      newQuestions[idx] = { ...question, content: e.target.value };
+                      setQuestions(newQuestions);
+                    }}
+                    placeholder="Nhập nội dung câu hỏi"
+                    className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                  />
+                </div>
+
+                {/* Multiple Choice Options */}
+                {question.type === 'multiple_choice' && question.options && (
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-3">
+                      Đáp án (chọn đáp án đúng)
+                    </label>
+                    <div className="space-y-2">
+                      {question.options.map((option, optIdx) => (
+                        <div key={optIdx} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50">
+                          <input
+                            type="radio"
+                            name={`correctAnswer-${idx}`}
+                            checked={option.isCorrect}
+                            onChange={(e) => {
+                              const newQuestions = [...questions];
+                              const newOptions = [...(newQuestions[idx].options || [])];
+                              newOptions.forEach((opt, i) => {
+                                opt.isCorrect = i === optIdx && e.target.checked;
+                              });
+                              newQuestions[idx] = { ...newQuestions[idx], options: newOptions };
+                              setQuestions(newQuestions);
+                            }}
+                            className="w-5 h-5 cursor-pointer accent-green-600"
+                          />
+                          <span className="font-semibold text-gray-700 min-w-12">
+                            {String.fromCharCode(65 + optIdx)})
+                          </span>
+                          <input
+                            type="text"
+                            value={option.text}
+                            onChange={(e) => {
+                              const newQuestions = [...questions];
+                              const newOptions = [...(newQuestions[idx].options || [])];
+                              newOptions[optIdx] = { ...option, text: e.target.value };
+                              newQuestions[idx] = { ...newQuestions[idx], options: newOptions };
+                              setQuestions(newQuestions);
+                            }}
+                            placeholder={`Nhập đáp án ${String.fromCharCode(65 + optIdx)}`}
+                            className="flex-1 border rounded p-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          {option.isCorrect && (
+                            <span className="text-green-600 font-semibold text-sm">✓</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -476,7 +566,7 @@ export default function EditExamPage() {
             disabled={loading || questions.length === 0}
             className="ml-auto px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
           >
-            {loading ? '⏳ Đang lưu...' : '✓ Tạo đề'}
+            {loading ? '⏳ Đang lưu...' : '✓ Lưu đề'}
           </button>
         </div>
       </div>

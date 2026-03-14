@@ -16,6 +16,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const router = useRouter();
   const { user, logout, updateUser } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [darkMode, setDarkMode] = useState(false);
 
   const handleLogout = () => {
@@ -24,6 +25,21 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     setTimeout(() => {
       router.push('/');
     }, 100);
+  };
+
+  const handleMouseEnter = () => {
+    if (closeTimeout) {
+      clearTimeout(closeTimeout);
+      setCloseTimeout(null);
+    }
+    setDropdownOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setDropdownOpen(false);
+    }, 150);
+    setCloseTimeout(timeout);
   };
 
   const handleProfileClick = () => {
@@ -85,7 +101,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
             href="/student/exams"
             className="block px-6 py-3 hover:bg-blue-800 transition"
           >
-            Danh sách đề thi
+            Danh sách lớp
           </Link>
           <Link
             href="/student/results"
@@ -100,72 +116,67 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
           <div></div>
-          <div className="flex items-center gap-4 relative">
-            <div
-              className="relative"
-              onMouseEnter={() => setDropdownOpen(true)}
-              onMouseLeave={() => setDropdownOpen(false)}
-            >
-              {user?.avatar && (
-                <img
-                  src={user.avatar}
-                  alt={user.fullName}
-                  className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover cursor-pointer hover:opacity-80 transition"
-                />
-              )}
-              {!user?.avatar && (
-                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold cursor-pointer hover:opacity-80 transition">
-                  {user?.fullName?.charAt(0).toUpperCase()}
-                </div>
-              )}
+          <div
+            className="flex items-center gap-4 relative"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            {user?.avatar && (
+              <img
+                src={user.avatar}
+                alt={user.fullName}
+                className="w-10 h-10 rounded-full border-2 border-blue-500 object-cover cursor-pointer hover:opacity-80 transition"
+              />
+            )}
+            {!user?.avatar && (
+              <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-semibold cursor-pointer hover:opacity-80 transition">
+                {user?.fullName?.charAt(0).toUpperCase()}
+              </div>
+            )}
 
-              {/* Dropdown Menu */}
-              {dropdownOpen && (
-                <div className="absolute -right-12 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+            {/* Dropdown Menu */}
+            {dropdownOpen && (
+              <div className="absolute -right-12 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                <button
+                  onClick={handleProfileClick}
+                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                >
+                  Tài khoản
+                </button>
+                <div className="border-t border-gray-200"></div>
+                {!user?.isTeacherApproved ? (
                   <button
-                    onClick={handleProfileClick}
+                    onClick={handleRegisterTeacher}
                     className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
                   >
-                    Tài khoản
+                    Đăng ký làm Giáo viên
                   </button>
-                  <div className="border-t border-gray-200"></div>
-                  {!user?.isTeacherApproved ? (
-                    <button
-                      onClick={handleRegisterTeacher}
-                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                    >
-                      Đăng ký làm Giáo viên
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSwitchToTeacher}
-                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                    >
-                      Qua màn Giáo viên
-                    </button>
-                  )}
-                  <div className="border-t border-gray-200"></div>
+                ) : (
                   <button
-                    onClick={toggleDarkMode}
+                    onClick={handleSwitchToTeacher}
                     className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
                   >
-                    {darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+                    Qua màn Giáo viên
                   </button>
-                  <div className="border-t border-gray-200"></div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                  >
-                    Đăng xuất
-                  </button>
-                </div>
-              )}
-            </div>
-            <div
-              className="text-right cursor-pointer hover:opacity-80 transition"
-              onMouseEnter={() => setDropdownOpen(true)}
-              onMouseLeave={() => setDropdownOpen(false)}
-            >
+                )}
+                <div className="border-t border-gray-200"></div>
+                <button
+                  onClick={toggleDarkMode}
+                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                >
+                  {darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+                </button>
+                <div className="border-t border-gray-200"></div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            )}
+
+            <div className="text-right cursor-pointer hover:opacity-80 transition">
               <p className="font-semibold text-gray-800 leading-tight m-0">{user?.fullName}</p>
               <p className="text-sm text-blue-600 leading-tight m-0">Học sinh</p>
             </div>

@@ -9,7 +9,8 @@ interface TimerProps {
 }
 
 export default function Timer({ totalSeconds, onTimeUp }: TimerProps) {
-  const [timeLeft, setTimeLeft] = useState(totalSeconds);
+  const validSeconds = Number.isFinite(totalSeconds) ? totalSeconds : 0;
+  const [timeLeft, setTimeLeft] = useState(validSeconds);
 
   useEffect(() => {
     if (timeLeft <= 0) {

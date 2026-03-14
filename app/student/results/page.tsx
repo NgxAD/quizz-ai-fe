@@ -76,9 +76,9 @@ export default function StudentResultsPage() {
     );
   }
 
-  const scorePercentage = result.totalPoints 
-    ? Math.round((result.score / result.totalPoints) * 100)
-    : Math.round(result.score);
+  const scoreOutOf10 = result.totalPoints 
+    ? Math.round((result.score / result.totalPoints) * 10 * 10) / 10
+    : Math.round(result.score) * 10 / (result.totalPoints || 1);
   const isPassed = result.isPassed;
 
   return (
@@ -110,7 +110,7 @@ export default function StudentResultsPage() {
           <div className={`text-6xl font-bold mb-4 ${
             isPassed ? 'text-green-600' : 'text-red-600'
           }`}>
-            {scorePercentage}%
+            {scoreOutOf10}/10
           </div>
           <div className={`text-2xl font-semibold mb-4 ${
             isPassed ? 'text-green-700' : 'text-red-700'

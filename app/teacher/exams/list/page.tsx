@@ -24,6 +24,7 @@ export default function ExamsListPage() {
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [assignLoading, setAssignLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchExams();
@@ -33,7 +34,7 @@ export default function ExamsListPage() {
   const fetchExams = async () => {
     try {
       setLoading(true);
-      const response = await examApi.list();
+      const response = await examApi.list('published');
       setExams(response.data);
       setError('');
     } catch (err: any) {
@@ -65,26 +66,7 @@ export default function ExamsListPage() {
     }
   };
 
-  const handlePublish = async (examId: string, isPublished: boolean) => {
-    try {
-      if (isPublished) {
-        await examApi.unpublish(examId);
-      } else {
-        await examApi.publish(examId);
-      }
-      // Update the exam in the list
-      setExams(exams.map(exam => 
-        exam._id === examId 
-          ? { ...exam, isPublished: !isPublished }
-          : exam
-      ));
-      setSuccess(isPublished ? '✓ Hủy công bố thành công!' : '✓ Công bố đề thành công!');
-      setTimeout(() => setSuccess(''), 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi khi công bố đề');
-      console.error('Error:', err);
-    }
-  };
+
 
   const handleAssignClick = (examId: string) => {
     setSelectedExamId(examId);
@@ -142,7 +124,7 @@ export default function ExamsListPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-visible">
           {loading ? (
             <div className="p-6 text-center text-gray-600">Đang tải...</div>
           ) : exams.length === 0 ? (
@@ -155,64 +137,60 @@ export default function ExamsListPage() {
                   <th className="text-left p-4 font-semibold text-black">Mô tả</th>
                   <th className="text-left p-4 font-semibold text-black">Thời gian (phút)</th>
                   <th className="text-left p-4 font-semibold text-black">Điểm đạt (%)</th>
-                  <th className="text-center p-4 font-semibold text-black">Trạng thái</th>
                   <th className="text-left p-4 font-semibold text-black">Hành động</th>
                 </tr>
               </thead>
               <tbody>
                 {exams.map((exam) => (
-                  <tr key={exam._id} className="border-b hover:bg-gray-50">
-                    <td className="p-4 text-black">{exam.title}</td>
+                  <tr key={exam._id} className="border-b hover:bg-gray-50 cursor-pointer">
+                    <td className="p-4">
+                      <Link
+                        href={`/teacher/exams/${exam._id}`}
+                        className="text-blue-600 hover:text-blue-700 font-semibold hover:underline"
+                      >
+                        {exam.title}
+                      </Link>
+                    </td>
                     <td className="p-4 text-black">{exam.description || '-'}</td>
                     <td className="p-4 text-black">{exam.duration || '-'}</td>
                     <td className="p-4 text-black">{exam.passingPercentage || '-'}</td>
-                    <td className="p-4 text-center">
-                      {exam.isPublished ? (
-                        <span className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-                          Đã công bố
-                        </span>
-                      ) : (
-                        <span className="inline-block bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-semibold">
-                          Bản nháp
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 space-x-2">
-                      <Link
-                        href={`/teacher/exams/${exam._id}/edit`}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                      >
-                        Sửa
-                      </Link>
-                      <Link
-                        href={`/teacher/ai/generate?quizId=${exam._id}`}
-                        className="bg-indigo-500 text-white px-3 py-1 rounded text-sm hover:bg-indigo-600"
-                      >
-                        AI
-                      </Link>
-                      <button
-                        onClick={() => handlePublish(exam._id, exam.isPublished || false)}
-                        className={`text-white px-3 py-1 rounded text-sm ${
-                          exam.isPublished
-                            ? 'bg-gray-500 hover:bg-gray-600'
-                            : 'bg-purple-500 hover:bg-purple-600'
-                        }`}
-                      >
-                        {exam.isPublished ? 'Hủy công bố' : 'Công bố'}
-                      </button>
-                      <button
-                        onClick={() => handleAssignClick(exam._id)}
-                        disabled={!exam.isPublished}
-                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      >
-                        Giao
-                      </button>
-                      <button
-                        onClick={() => handleDelete(exam._id)}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                      >
-                        Xóa
-                      </button>
+                    <td className="p-4 overflow-visible">
+                      <div className="relative inline-block">
+                        <button
+                          onClick={() => setOpenMenuId(openMenuId === exam._id ? null : exam._id)}
+                          className="px-3 py-1 text-gray-600 hover:text-gray-900 text-xl font-bold"
+                        >
+                          ⋮
+                        </button>
+                        {openMenuId === exam._id && (
+                          <div className="absolute right-0 top-full pt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                            <Link
+                              href={`/teacher/exams/${exam._id}/edit`}
+                              className="block px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-t-lg"
+                            >
+                              Sửa
+                            </Link>
+                            <button
+                              onClick={() => {
+                                handleAssignClick(exam._id);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-green-600 hover:bg-green-50"
+                            >
+                              Giao
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDelete(exam._id);
+                                setOpenMenuId(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-b-lg"
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -224,7 +202,7 @@ export default function ExamsListPage() {
 
       {/* Assign Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 shadow-lg">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Giao bài tập cho lớp</h2>
             

@@ -142,7 +142,7 @@ export default function ClassExamsPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => router.push(`/student/do-exam?examId=${exam._id}`)}
+                    onClick={() => router.push(`/student/do-exam/${exam._id}`)}
                     className="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition"
                   >
                     Làm bài kiểm tra

@@ -49,6 +49,17 @@ const aiApi = {
     numberOfQuestions: number;
     difficulty: string;
   }) => axiosClient.post('/ai/generate-exam', payload),
+
+  // Chat AI endpoints
+  initializeAIChat: () =>
+    axiosClient.post<any>('/ai/chat/initialize', {}),
+
+  chatAI: (payload: {
+    conversationId: string;
+    message: string;
+    currentQuestions: any[];
+  }) =>
+    axiosClient.post<any>('/ai/chat/message', payload),
 };
 
 export default aiApi;

@@ -11,6 +11,7 @@ interface Question {
   type: string;
   options: string[];
   correctAnswer: number;
+  image?: string; // base64 image data
 }
 
 interface ExamData {
@@ -19,6 +20,7 @@ interface ExamData {
   duration?: number;
   passingPercentage?: number;
   questions?: Question[];
+  examType?: 'exercise' | 'test'; // 'exercise' = can retake & see answers, 'test' = one time only
 }
 
 export default function EditComposedExamPage() {
@@ -34,7 +36,10 @@ export default function EditComposedExamPage() {
     if (composedExam) {
       try {
         const exam = JSON.parse(composedExam);
-        setExamData(exam);
+        setExamData({
+          ...exam,
+          examType: exam.examType || 'exercise', // Default to exercise
+        });
       } catch (err) {
         setError('Lỗi khi tải dữ liệu đề');
       }
@@ -60,11 +65,16 @@ export default function EditComposedExamPage() {
         description: examData.description || '',
         duration: examData.duration || 60,
         passingPercentage: examData.passingPercentage || 50,
+        examType: examData.examType || 'exercise', // exercise or test
         questions: examData.questions.map((q) => ({
           content: q.content,
           type: q.type || 'MULTIPLE_CHOICE',
-          options: q.options || [],
-          correctAnswer: q.correctAnswer || 0,
+          // Convert string array + correctAnswer index to object array {text, isCorrect}
+          options: (q.options || []).map((opt, idx) => ({
+            text: opt,
+            isCorrect: idx === q.correctAnswer,
+          })),
+          image: q.image, // Include image if provided
         })),
       };
 
@@ -178,6 +188,64 @@ export default function EditComposedExamPage() {
                 max="100"
                 className="w-full border rounded-lg p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          {/* Exam Type */}
+          <div className="mb-6">
+            <label className="block text-gray-700 font-semibold mb-3">
+              Loại đề
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <label className={`relative border-2 rounded-lg p-4 cursor-pointer transition ${
+                examData.examType === 'exercise' 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-300 bg-white hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="examType"
+                  value="exercise"
+                  checked={examData.examType === 'exercise'}
+                  onChange={(e) =>
+                    setExamData({ ...examData, examType: 'exercise' as const })
+                  }
+                  className="absolute top-4 right-4 w-5 h-5"
+                />
+                <div className="pr-8">
+                  <h4 className="font-semibold text-gray-900 mb-1">📚 Bài tập</h4>
+                  <p className="text-sm text-gray-600">
+                    • Học sinh có thể làm lại nhiều lần
+                    <br />
+                    • Xem đáp án sau khi hoàn thành
+                  </p>
+                </div>
+              </label>
+
+              <label className={`relative border-2 rounded-lg p-4 cursor-pointer transition ${
+                examData.examType === 'test' 
+                  ? 'border-red-500 bg-red-50' 
+                  : 'border-gray-300 bg-white hover:border-gray-400'
+              }`}>
+                <input
+                  type="radio"
+                  name="examType"
+                  value="test"
+                  checked={examData.examType === 'test'}
+                  onChange={(e) =>
+                    setExamData({ ...examData, examType: 'test' as const })
+                  }
+                  className="absolute top-4 right-4 w-5 h-5"
+                />
+                <div className="pr-8">
+                  <h4 className="font-semibold text-gray-900 mb-1">✏️ Bài kiểm tra</h4>
+                  <p className="text-sm text-gray-600">
+                    • Học sinh chỉ làm được một lần
+                    <br />
+                    • Không xem được đáp án
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 
