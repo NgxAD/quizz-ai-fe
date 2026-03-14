@@ -177,7 +177,7 @@ export default function ResultsPage() {
                   const quizId = typeof submission.quizId === 'string' 
                     ? submission.quizId 
                     : (submission.quizId as any)._id;
-                  router.push(`/student/do-exam/${quizId}`);
+                  router.push(`/student/do-exam/${quizId}?retry=true`);
                 }}
                 className="px-8 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
               >

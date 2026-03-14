@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import StudentLayout from '@/layouts/StudentLayout';
 import Timer from '@/components/Timer';
 import examApi, { Exam as ExamType } from '@/api/exam.api';
 import submissionApi from '@/api/submission.api';
+import { useAuthStore } from '@/store/auth.store';
 
 interface Question {
   _id?: string;
@@ -20,7 +21,10 @@ interface Question {
 export default function DoExamPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const examId = params?.id as string | undefined;
+  const isRetry = searchParams?.get('retry') === 'true';
+  const { user } = useAuthStore();
 
   const [exam, setExam] = useState<ExamType | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -54,6 +58,30 @@ export default function DoExamPage() {
       setExam(examResponse.data);
       console.log('Exam loaded:', examResponse.data);
       console.log('Questions from backend:', examResponse.data.questions);
+
+      // Check if user already has a submission for this exam (only if not retrying)
+      if (!isRetry) {
+        try {
+          const submissionsResponse = await submissionApi.getUserSubmissions();
+          const userSubmission = submissionsResponse.data.find((sub: any) => {
+            const subQuizId = typeof sub.quizId === 'string' ? sub.quizId : (sub.quizId as any)?._id;
+            return subQuizId === examId;
+          });
+          
+          if (userSubmission) {
+            console.log('User already has submission for this exam:', userSubmission._id);
+            setError('');
+            // Redirect to results page
+            setTimeout(() => {
+              router.push(`/student/results/${userSubmission._id}`);
+            }, 500);
+            return;
+          }
+        } catch (submissionCheckErr) {
+          console.error('Error checking existing submissions:', submissionCheckErr);
+          // Continue with exam if check fails
+        }
+      }
 
       // Questions should be populated from backend
       if (examResponse.data.questions && examResponse.data.questions.length > 0) {

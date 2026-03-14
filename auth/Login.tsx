@@ -56,6 +56,9 @@ export default function Login() {
       const response = await authApi.login({ email, password });
       login(response.data.user as any, response.data.access_token);
       
+      // Force state update and refresh
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Redirect based on role
       if (response.data.user.role?.toLowerCase() === 'admin') {
         router.push('/admin/dashboard');
@@ -165,8 +168,11 @@ export default function Login() {
               onClick={handleGoogleLogin}
               className="w-full bg-white border-2 border-gray-300 hover:border-blue-500 text-gray-700 font-bold py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <image href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjIuNTYgMTIuMjVjMCAwLjYyLS4wMyAxLjIxLS4xNiAxLjc5SDEydjMuMjZoNi4zYzAtLjI2LS4xMyAxLjAzLS40NyAxLjc4aC0zLjYxVjE3LjNoMS40OXYyLjc3aC0zLjI4VjE3LjNoLTMuNjF2LTMuNzZjLS4zNC0uNzUtLjQ3LTEuNTItLjQ3LTEuNzh2LTMuMjZoNi4zYy4xMy0uNTguMTYtMS4xNy4xNi0xLjc5IDAtLjYyLS4wMy0xLjIxLS4xNi0xLjc5SDJ2MTAuNTJjMCAuNjIuMDMgMS4yMS4xNiAxLjc5aDIwLjRjLjEzLS41OC4xNi0xLjE3LjE2LTEuNzlWMTIuMjV6IiBmaWxsPSIjMTI2N0Y3Ii8+PHBhdGggZD0iTTcuODcgMTUuNTZjLS4zLS4yNy0uNTUtLjY3LS43MS0xLjEzSC4wMXYyLjQ0YzAgLjYyLjAzIDEuMjEuMTYgMS43OWgzLjkxYy4xNi0uNTguMzQtMS4xNi41Mi0xLjU5Ljg4LTIuMDcgMi42NC0zLjQyIDQuMjctMy40MnM2LjAzIDEuMzUgNi45MSAzLjQyYzAuMTguNDMuMzYgMS4wMS41MiAxLjU5aDMuOTFjLjEzLS41OC4xNi0xLjE3LjE2LTEuNzl2LTIuNDRoLTYuMTVjLS4xNi40Ni0uNDEuODYtLjcxIDEuMTN6IiBmaWxsPSIjRUE0MzM1Ii8+PC9zdmc+" />
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.53 4.21 1.57l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
               Đăng nhập bằng Google
             </button>

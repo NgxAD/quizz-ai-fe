@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import Cookies from 'js-cookie';
+import { clearAuthHeaders } from '@/api/axiosClient';
 
 export interface User {
   _id: string;
@@ -63,8 +64,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        Cookies.remove('accessToken');
-        Cookies.remove('user');
+        clearAuthHeaders();
+        // Clear Zustand persist from localStorage to force fresh state
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-store');
+        }
         set({ user: null, token: null, isLoggedIn: false });
       },
 

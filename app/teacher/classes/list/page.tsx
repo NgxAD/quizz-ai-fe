@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import TeacherLayout from '@/layouts/TeacherLayout';
 import classApi from '@/api/class.api';
+import { useAuthStore } from '@/store/auth.store';
 
 interface Class {
   _id: string;
@@ -16,15 +17,19 @@ interface Class {
 
 export default function ClassListPage() {
   const router = useRouter();
+  const { isLoggedIn, user } = useAuthStore();
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Refetch when user logs in or role changes
   useEffect(() => {
-    loadClasses();
-  }, []);
+    if (isLoggedIn) {
+      loadClasses();
+    }
+  }, [isLoggedIn, user?._id]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -13,6 +13,9 @@ axiosClient.interceptors.request.use(
     const token = Cookies.get('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Explicitly remove Authorization header if no token
+      delete config.headers.Authorization;
     }
     // Only set Content-Type if not FormData
     if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
@@ -33,6 +36,7 @@ axiosClient.interceptors.response.use(
       // Token expired or invalid - clear cookies and redirect to login
       Cookies.remove('accessToken');
       Cookies.remove('user');
+      delete axiosClient.defaults.headers.common['Authorization'];
       
       // Only redirect if not already on login page
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
@@ -42,5 +46,12 @@ axiosClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Export a method to clear auth headers
+export const clearAuthHeaders = () => {
+  Cookies.remove('accessToken');
+  Cookies.remove('user');
+  delete axiosClient.defaults.headers.common['Authorization'];
+};
 
 export default axiosClient;

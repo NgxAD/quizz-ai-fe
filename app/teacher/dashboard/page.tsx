@@ -4,16 +4,21 @@ import { useState, useEffect } from 'react';
 import TeacherLayout from '@/layouts/TeacherLayout';
 import examApi from '@/api/exam.api';
 import classApi from '@/api/class.api';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function DashboardPage() {
+  const { isLoggedIn, user } = useAuthStore();
   const [totalExams, setTotalExams] = useState(0);
   const [totalClasses, setTotalClasses] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Refetch when user logs in or role changes
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (isLoggedIn) {
+      loadDashboardData();
+    }
+  }, [isLoggedIn, user?._id]);
 
   const loadDashboardData = async () => {
     try {

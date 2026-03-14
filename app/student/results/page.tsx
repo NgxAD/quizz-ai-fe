@@ -1,51 +1,107 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import StudentLayout from '@/layouts/StudentLayout';
-import resultApi from '@/api/result.api';
+import submissionApi from '@/api/submission.api';
+import examApi from '@/api/exam.api';
 
-interface Result {
+interface SubmissionWithExam {
   _id: string;
-  quizId: string;
+  quizId: string | any;
   userId: string;
-  submissionId: string;
-  totalPoints: number;
-  correctAnswers: number;
-  wrongAnswers: number;
-  skipped: number;
-  score: number;
-  isPassed: boolean;
-  completedAt: string;
+  score?: number;
+  submittedAt?: string;
+  result?: {
+    score: number;
+    correctAnswers: number;
+    wrongAnswers: number;
+    skipped: number;
+    totalPoints: number;
+    isPassed: boolean;
+  };
+  examTitle?: string;
+  examDuration?: number;
 }
 
 export default function StudentResultsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const resultId = searchParams?.get('submissionId') as string;
 
-  const [result, setResult] = useState<Result | null>(null);
+  const [submissions, setSubmissions] = useState<SubmissionWithExam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (resultId) {
-      loadResults();
-    }
-  }, [resultId]);
+    loadAllResults();
+  }, []);
 
-  const loadResults = async () => {
+  const loadAllResults = async () => {
     try {
       setLoading(true);
-      const response = await resultApi.getById(resultId);
-      setResult(response.data);
+      // Get all submissions for the current user
+      const response = await submissionApi.getUserSubmissions();
+      const submissionsData = response.data as any[];
+
+      // Enrich submissions with exam details
+      const enrichedSubmissions = await Promise.all(
+        submissionsData.map(async (sub) => {
+          try {
+            const quizId = typeof sub.quizId === 'string' ? sub.quizId : (sub.quizId as any)._id;
+            const examResponse = await examApi.getById(quizId);
+            return {
+              ...sub,
+              examTitle: examResponse.data.title,
+              examDuration: examResponse.data.duration,
+            };
+          } catch (err) {
+            console.error('Error loading exam details for submission:', sub._id, err);
+            return {
+              ...sub,
+              examTitle: 'Bài kiểm tra',
+              examDuration: 0,
+            };
+          }
+        })
+      );
+
+      // Sort by submission date, newest first
+      enrichedSubmissions.sort((a, b) => {
+        const dateA = new Date(a.submittedAt || '').getTime();
+        const dateB = new Date(b.submittedAt || '').getTime();
+        return dateB - dateA;
+      });
+
+      setSubmissions(enrichedSubmissions);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi khi tải kết quả');
-      console.error('Error loading results:', err);
+      console.error('Error loading submissions:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Lỗi khi tải danh sách kết quả';
+      setError(errorMsg);
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getScoreOutOf10 = (submission: SubmissionWithExam) => {
+    if (submission.result) {
+      const totalQuestions = submission.result.correctAnswers + submission.result.wrongAnswers + submission.result.skipped;
+      return totalQuestions > 0 
+        ? ((submission.result.correctAnswers / totalQuestions) * 10).toFixed(1)
+        : '0';
+    }
+    return 'N/A';
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
@@ -58,7 +114,7 @@ export default function StudentResultsPage() {
     );
   }
 
-  if (error || !result) {
+  if (error) {
     return (
       <StudentLayout>
         <div className="space-y-6">
@@ -69,93 +125,79 @@ export default function StudentResultsPage() {
             ← Quay lại
           </button>
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error || 'Không tìm thấy kết quả'}
+            {error}
           </div>
         </div>
       </StudentLayout>
     );
   }
 
-  const scoreOutOf10 = result.totalPoints 
-    ? Math.round((result.score / result.totalPoints) * 10 * 10) / 10
-    : Math.round(result.score) * 10 / (result.totalPoints || 1);
-  const isPassed = result.isPassed;
-
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <button
-          onClick={() => router.back()}
-          className="text-blue-600 hover:text-blue-700 font-semibold"
-        >
-          ← Quay lại
-        </button>
+        <h1 className="text-3xl font-bold text-gray-900">Kết quả bài kiểm tra</h1>
 
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Kết quả bài kiểm tra</h1>
-          {result.quizId && (
-            <p className="text-gray-600 mt-2">
-              Đề: <span className="font-semibold">
-                {typeof result.quizId === 'string' ? result.quizId : (result.quizId as any).title || 'Bài kiểm tra'}
-              </span>
-            </p>
-          )}
-        </div>
+        {submissions.length === 0 ? (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded text-center">
+            Bạn chưa hoàn thành bài kiểm tra nào
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {submissions.map((submission) => {
+              const scoreOutOf10 = getScoreOutOf10(submission);
+              const isPassed = submission.result?.isPassed ?? false;
 
-        <div className={`rounded-lg shadow p-8 text-center ${
-          isPassed 
-            ? 'bg-green-50 border border-green-200' 
-            : 'bg-red-50 border border-red-200'
-        }`}>
-          <div className={`text-6xl font-bold mb-4 ${
-            isPassed ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {scoreOutOf10}/10
+              return (
+                <div
+                  key={submission._id}
+                  onClick={() => router.push(`/student/results/${submission._id}`)}
+                  className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer border-l-4"
+                  style={{
+                    borderLeftColor: isPassed ? '#10b981' : '#ef4444'
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {submission.examTitle}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Hoàn thành: {formatDate(submission.submittedAt || '')}
+                      </p>
+                      {submission.result && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium text-green-600">
+                            {submission.result.correctAnswers} đúng
+                          </span>
+                          {' • '}
+                          <span className="font-medium text-red-600">
+                            {submission.result.wrongAnswers} sai
+                          </span>
+                          {' • '}
+                          <span className="font-medium text-yellow-600">
+                            {submission.result.skipped} bỏ qua
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className={`text-3xl font-bold ${isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                        {scoreOutOf10}/10
+                      </div>
+                      <div className="text-sm mt-2">
+                        {isPassed ? (
+                          <span className="text-green-600 font-semibold">✓ Đạt yêu cầu</span>
+                        ) : (
+                          <span className="text-red-600 font-semibold">✗ Không đạt</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className={`text-2xl font-semibold mb-4 ${
-            isPassed ? 'text-green-700' : 'text-red-700'
-          }`}>
-            {isPassed ? '✓ Đạt' : '✗ Không đạt'}
-          </div>
-          <div className="text-gray-600">
-            <p className="mb-2">Điểm: <span className="font-semibold">{result.score}{result.totalPoints ? ` / ${result.totalPoints}` : ''}</span></p>
-            <p className="text-sm">Thời gian nộp: {new Date(result.completedAt).toLocaleString('vi-VN')}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 text-center bg-gray-50 rounded-lg p-6">
-          <div>
-            <div className="text-2xl font-bold text-gray-900">{result.correctAnswers + result.wrongAnswers + result.skipped}</div>
-            <div className="text-sm text-gray-600">Câu trả lời</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-green-600">
-              {result.correctAnswers}
-            </div>
-            <div className="text-sm text-gray-600">Đúng</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-red-600">
-              {result.wrongAnswers}
-            </div>
-            <div className="text-sm text-gray-600">Sai</div>
-          </div>
-        </div>
-
-        <div className="flex gap-4 justify-center pt-6">
-          <button
-            onClick={() => router.push('/student/classes')}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
-          >
-            Quay lại danh sách lớp
-          </button>
-          <button
-            onClick={() => router.push('/student/exams')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Xem bài khác
-          </button>
-        </div>
+        )}
       </div>
     </StudentLayout>
   );

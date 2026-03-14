@@ -32,7 +32,7 @@ const submissionApi = {
     axiosClient.get<Submission>(`/submissions/${id}`),
 
   getUserSubmissions: () =>
-    axiosClient.get<Submission[]>('/submissions/my-submissions'),
+    axiosClient.get<Submission[]>('/submissions/user'),
 
   getExamSubmissions: (examId: string) =>
     axiosClient.get<Submission[]>(`/submissions/exam/${examId}`),

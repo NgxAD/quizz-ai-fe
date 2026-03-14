@@ -14,7 +14,7 @@ export const useProtectedRoute = () => {
         router.push('/login');
       }
       setIsChecked(true);
-    }, 0);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [isLoggedIn, router]);
@@ -36,10 +36,10 @@ export const useTeacherRoute = () => {
         router.push('/student/exams');
       }
       setIsChecked(true);
-    }, 0);
+    }, 50);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, user, router]);
+  }, [isLoggedIn, user?.role, router]);
 
   return { isChecked };
 };
@@ -58,10 +58,10 @@ export const useStudentRoute = () => {
         router.push('/teacher/dashboard');
       }
       setIsChecked(true);
-    }, 0);
+    }, 50);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, user, router]);
+  }, [isLoggedIn, user?.role, router]);
 
   return { isChecked };
 };

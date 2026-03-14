@@ -103,12 +103,6 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           >
             Danh sách lớp
           </Link>
-          <Link
-            href="/student/results"
-            className="block px-6 py-3 hover:bg-blue-800 transition"
-          >
-            Kết quả
-          </Link>
         </nav>
       </div>
 
