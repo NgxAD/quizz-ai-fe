@@ -48,6 +48,9 @@ const authApi = {
   googleLogin: (code: string) =>
     axiosClient.post<AuthResponse>('/auth/google', { code }),
 
+  getAuthSession: (sessionId: string) =>
+    axiosClient.get<AuthResponse>(`/auth/session/${sessionId}`),
+
   updateRole: (role: 'student' | 'teacher' | 'admin') =>
     axiosClient.post<AuthResponse>('/auth/update-role', { role }),
 

@@ -54,6 +54,11 @@ export default function Login() {
 
     try {
       const response = await authApi.login({ email, password });
+      console.log('Login response:', response);
+      console.log('Login response.data:', response?.data);
+      console.log('Login response.data.user:', response?.data?.user);
+      console.log('Login response.data.user.roles:', response?.data?.user?.roles);
+      
       login(response.data.user as any, response.data.access_token);
       
       // Force state update and refresh
@@ -61,14 +66,23 @@ export default function Login() {
       
       // Redirect based on roles (priority: admin > teacher > student)
       const user = response.data.user;
+      console.log('User object:', user);
+      console.log('User roles:', user?.roles);
+      console.log('Has admin role:', user?.roles?.includes('admin'));
+      console.log('Has teacher role:', user?.roles?.includes('teacher'));
+      
       if (user.roles?.includes('admin')) {
+        console.log('Redirecting to admin/dashboard');
         router.push('/admin/dashboard');
       } else if (user.roles?.includes('teacher')) {
+        console.log('Redirecting to teacher/dashboard');
         router.push('/teacher/dashboard');
       } else {
+        console.log('Redirecting to student/exams');
         router.push('/student/exams');
       }
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
