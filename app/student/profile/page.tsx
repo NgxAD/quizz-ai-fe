@@ -17,7 +17,6 @@ export default function StudentProfile() {
     fullName: user?.fullName || '',
     dateOfBirth: user?.dateOfBirth || '',
     email: user?.email || '',
-    phoneNumber: user?.phoneNumber || '',
     gender: user?.gender || 'male',
   });
 
@@ -28,7 +27,6 @@ export default function StudentProfile() {
         fullName: user.fullName || '',
         dateOfBirth: user.dateOfBirth || '',
         email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
         gender: user.gender || 'male',
       });
       if (user.avatar) {
@@ -48,14 +46,43 @@ export default function StudentProfile() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Tệp quá lớn. Vui lòng chọn tệp nhỏ hơn 5MB');
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Tệp quá lớn. Vui lòng chọn tệp nhỏ hơn 2MB');
         return;
       }
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          // Compress image by resizing
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Max dimension 800px
+          if (width > height) {
+            if (width > 800) {
+              height *= 800 / width;
+              width = 800;
+            }
+          } else {
+            if (height > 800) {
+              width *= 800 / height;
+              height = 800;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with lower quality
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          setAvatarPreview(compressedDataUrl);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -67,7 +94,6 @@ export default function StudentProfile() {
       // Prepare profile data to send to backend
       const profileData = {
         fullName: formData.fullName,
-        phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth,
         gender: formData.gender,
         avatar: avatarPreview,
@@ -76,9 +102,27 @@ export default function StudentProfile() {
       // Call backend API to update profile
       const response = await authApi.updateProfile(profileData);
       
+      // Log the response to debug
+      console.log('Update profile response:', response.data);
+      
       // Update local state with response data (this will persist via zustand)
-      if (response.data.user) {
+      if (response.data?.user) {
         updateUser(response.data.user);
+        console.log('User updated in store:', response.data.user);
+        
+        // Verify data was saved by fetching current user
+        try {
+          const meResponse = await authApi.getCurrentUser();
+          if (meResponse.data?.user) {
+            console.log('Verified user data from server:', meResponse.data.user);
+            // Ensure latest data is in store
+            updateUser(meResponse.data.user);
+          }
+        } catch (meError) {
+          console.warn('Could not verify user data:', meError);
+        }
+      } else {
+        throw new Error('No user data in response');
       }
 
       alert('Cập nhật hồ sơ thành công');
@@ -182,49 +226,34 @@ export default function StudentProfile() {
             </div>
           </div>
 
-          {/* Row 3: Số điện thoại - Giới tính */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Số điện thoại
+          {/* Row 3: Giới tính */}
+          <div>
+            <label className="block text-gray-700 font-semibold mb-2">
+              Giới tính
+            </label>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="male"
+                  checked={formData.gender === 'male'}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span className="text-gray-700">Nam</span>
               </label>
-              <input
-                type="tel"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                placeholder="Nhập số điện thoại..."
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Giới tính
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="female"
+                  checked={formData.gender === 'female'}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span className="text-gray-700">Nữ</span>
               </label>
-              <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="male"
-                    checked={formData.gender === 'male'}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-gray-700">Nam</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="female"
-                    checked={formData.gender === 'female'}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-gray-700">Nữ</span>
-                </label>
-              </div>
             </div>
           </div>
 

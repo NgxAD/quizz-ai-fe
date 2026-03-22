@@ -5,11 +5,20 @@ import { useRouter, useParams } from 'next/navigation';
 import TeacherLayout from '@/layouts/TeacherLayout';
 import examApi, { Exam, Question } from '@/api/exam.api';
 import classApi from '@/api/class.api';
+import submissionApi, { Submission } from '@/api/submission.api';
 
 interface Class {
   _id: string;
   name: string;
   code: string;
+}
+
+interface StudentSubmissionData extends Submission {
+  userDetails?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
 }
 
 export default function ExamDetailPage() {
@@ -26,11 +35,14 @@ export default function ExamDetailPage() {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignSuccess, setAssignSuccess] = useState('');
+  const [submissions, setSubmissions] = useState<StudentSubmissionData[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
   useEffect(() => {
     if (examId) {
       loadExam();
       loadClasses();
+      loadSubmissions();
     }
   }, [examId]);
 
@@ -40,6 +52,18 @@ export default function ExamDetailPage() {
       setClasses(response.data);
     } catch (err: any) {
       console.error('Error loading classes:', err);
+    }
+  };
+
+  const loadSubmissions = async () => {
+    try {
+      setSubmissionsLoading(true);
+      const response = await submissionApi.getExamSubmissions(examId!);
+      setSubmissions(response.data || []);
+    } catch (err: any) {
+      console.error('Error loading submissions:', err);
+    } finally {
+      setSubmissionsLoading(false);
     }
   };
 
@@ -54,6 +78,23 @@ export default function ExamDetailPage() {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string | undefined): string => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'N/A';
     }
   };
 
@@ -351,6 +392,75 @@ export default function ExamDetailPage() {
           ) : (
             <div className="text-center py-12 text-gray-500">
               Chưa có câu hỏi nào
+            </div>
+          )}
+        </div>
+
+        {/* Submissions Section */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            📊 Kết quả học sinh ({submissions.length})
+          </h2>
+
+          {submissionsLoading ? (
+            <div className="text-center py-8 text-gray-500">
+              Đang tải dữ liệu...
+            </div>
+          ) : submissions.length === 0 ? (
+            <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-600">
+              Chưa có học sinh nào làm bài tập này
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Học sinh</th>
+                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Ngày làm</th>
+                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Điểm</th>
+                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((submission) => {
+                    const studentName = (submission.userId as any)?.fullName || submission.userDetails?.fullName || 'Không xác định';
+                    const score = submission.score ?? 0;
+                    const scoreOut10 = (score / 10).toFixed(1);
+                    const isPassed = exam?.passingPercentage ? score >= exam.passingPercentage : false;
+
+                    return (
+                      <tr key={submission._id} className="border-b hover:bg-gray-50 transition">
+                        <td className="px-6 py-4 text-gray-900 font-medium">{studentName}</td>
+                        <td className="px-6 py-4 text-center text-gray-600">
+                          {formatDate(submission.submittedAt)}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex justify-center">
+                            <span className={`px-3 py-2 rounded-full font-bold ${
+                              isPassed 
+                                ? 'bg-green-100 text-green-700' 
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {scoreOut10}/10
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => {
+                              const userId = typeof submission.userId === 'string' ? submission.userId : submission.userId?._id;
+                              router.push(`/teacher/exams/${exam?._id}/students/${userId}?submissionId=${submission._id}`);
+                            }}
+                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm font-medium"
+                          >
+                            Chi tiết
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

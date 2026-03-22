@@ -41,7 +41,7 @@ export default function StudentClassesPage() {
     <StudentLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Các lớp của tôi</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Danh sách lớp</h1>
           <button
             onClick={() => router.push('/student/join-class')}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition"

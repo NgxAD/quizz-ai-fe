@@ -14,7 +14,7 @@ interface TeacherLayoutProps {
 export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const { isChecked } = useTeacherRoute();
   const router = useRouter();
-  const { user, logout, updateUser } = useAuthStore();
+  const { user, logout, updateUser, setToken } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -50,13 +50,13 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const handleSwitchToStudent = async () => {
     try {
       const response = await authApi.updateRole('student');
-      // Update user với role mới
+      // Update user với roles mới
       if (response.data.user && response.data.access_token) {
         const updatedUser = {
           ...response.data.user,
-          role: (response.data.user.role as any)?.toLowerCase() || 'student',
         };
         updateUser(updatedUser);
+        setToken(response.data.access_token);
       }
       setDropdownOpen(false);
       setTimeout(() => {
@@ -90,16 +90,20 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div className="w-64 bg-gray-900 text-white shadow-lg">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Quizz Teacher</h1>
-        </div>
+        <button
+          onClick={() => router.push('/')}
+          className="w-full p-6 flex items-center gap-2 hover:opacity-80 transition"
+        >
+          <div className="text-3xl font-bold text-blue-400">📚</div>
+          <h1 className="text-2xl font-bold">ADTest</h1>
+        </button>
 
         <nav className="mt-10">
           <Link
             href="/teacher/dashboard"
             className="block px-6 py-3 hover:bg-gray-800 transition"
           >
-            Dashboard
+            Tổng quan
           </Link>
           <Link
             href="/teacher/classes/list"
@@ -112,6 +116,12 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
             className="block px-6 py-3 hover:bg-gray-800 transition"
           >
             Quản lý đề thi
+          </Link>
+          <Link
+            href="/teacher/questions/list"
+            className="block px-6 py-3 hover:bg-gray-800 transition"
+          >
+            Ngân hàng câu hỏi
           </Link>
         </nav>
       </div>
@@ -145,7 +155,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                   onClick={handleProfileClick}
                   className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
                 >
-                  Tài khoản
+                  Hồ sơ
                 </button>
                 <div className="border-t border-gray-200"></div>
                 <button

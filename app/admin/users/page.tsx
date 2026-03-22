@@ -9,7 +9,7 @@ interface User {
   _id: string;
   email: string;
   fullName: string;
-  role: string;
+  roles: ('student' | 'teacher' | 'admin')[];
   phoneNumber?: string;
   isActive: boolean;
   createdAt?: string;
@@ -46,19 +46,21 @@ export default function AdminUsersPage() {
     setEditData({
       fullName: user.fullName,
       phoneNumber: user.phoneNumber,
-      role: user.role,
-      isActive: user.isActive,
     });
   };
 
   const handleSaveEdit = async (userId: string) => {
     try {
-      await usersApi.updateUser(userId, editData);
+      const updatePayload = {
+        fullName: editData.fullName,
+        phoneNumber: editData.phoneNumber,
+      };
+      await usersApi.updateUser(userId, updatePayload);
       setEditingId(null);
       loadUsers();
       alert('Cập nhật người dùng thành công');
     } catch (err: any) {
-      alert('Lỗi khi cập nhật người dùng');
+      alert('Lỗi khi cập nhật người dùng: ' + err.response?.data?.message || err.message);
       console.error(err);
     }
   };
@@ -141,25 +143,29 @@ export default function AdminUsersPage() {
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={editData.role}
-                          onChange={(e) => setEditData({ ...editData, role: e.target.value })}
-                          className="px-3 py-2 border border-gray-300 rounded text-black"
-                        >
-                          <option value="student">Học sinh</option>
-                          <option value="teacher">Giáo viên</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                        <div className="flex gap-2 flex-wrap">
+                          {user.roles?.map((role) => (
+                            <span
+                              key={role}
+                              className={`px-3 py-1 rounded text-sm font-medium ${
+                                role === 'admin'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : role === 'teacher'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          value={editData.isActive ? 'true' : 'false'}
-                          onChange={(e) => setEditData({ ...editData, isActive: e.target.value === 'true' })}
-                          className="px-3 py-2 border border-gray-300 rounded text-black"
-                        >
-                          <option value="true">Hoạt động</option>
-                          <option value="false">Bị khóa</option>
-                        </select>
+                        <span className={`px-3 py-1 rounded text-sm font-medium ${
+                          user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {user.isActive ? 'Hoạt động' : 'Bị khóa'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 space-x-2">
                         <button
@@ -182,13 +188,22 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4 text-gray-600">{user.email}</td>
                       <td className="px-6 py-4 text-gray-600">{user.phoneNumber || '-'}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded text-sm font-medium ${
-                          user.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                          user.role === 'teacher' ? 'bg-blue-100 text-blue-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {user.role === 'admin' ? 'Admin' : user.role === 'teacher' ? 'Giáo viên' : 'Học sinh'}
-                        </span>
+                        <div className="flex gap-2 flex-wrap">
+                          {user.roles?.map((role) => (
+                            <span
+                              key={role}
+                              className={`px-3 py-1 rounded text-sm font-medium ${
+                                role === 'admin'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : role === 'teacher'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {role === 'admin' ? 'Admin' : role === 'teacher' ? 'Giáo viên' : 'Học sinh'}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded text-sm font-medium ${

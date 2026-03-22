@@ -48,9 +48,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div className="w-64 bg-gray-900 text-white shadow-lg">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Quizz Admin</h1>
-        </div>
+        <button
+          onClick={() => router.push('/')}
+          className="w-full p-6 flex items-center gap-2 hover:opacity-80 transition"
+        >
+          <div className="text-3xl font-bold text-blue-400">📚</div>
+          <h1 className="text-2xl font-bold">ADTest</h1>
+        </button>
 
         <nav className="mt-10">
           <Link

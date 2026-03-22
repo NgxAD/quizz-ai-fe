@@ -41,8 +41,11 @@ export default function Register() {
       const response = await authApi.register(payload);
       login(response.data.user as any, response.data.access_token);
       
-      // Redirect based on role
-      if (formData.role === 'teacher') {
+      // Force state update and refresh
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Redirect to appropriate page based on roles
+      if (response.data.user.roles?.includes('teacher')) {
         router.push('/teacher/dashboard');
       } else {
         router.push('/student/exams');
@@ -58,14 +61,14 @@ export default function Register() {
     <>
       {/* Header */}
       <nav className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div
-              className="flex items-center gap-2 cursor-pointer hover:opacity-70"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-70 flex-shrink-0"
               onClick={() => router.push('/')}
             >
               <div className="text-2xl font-bold text-blue-600">📚</div>
-              <h1 className="text-2xl font-bold text-gray-900">Quizz App</h1>
+              <h1 className="text-2xl font-bold text-gray-900">ADTest</h1>
             </div>
             <div className="flex gap-4">
               <Link
@@ -127,20 +130,6 @@ export default function Register() {
               placeholder="••••••••"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-semibold mb-2">Vai trò</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-              required
-            >
-              <option value="student">Học sinh</option>
-              <option value="teacher">Giáo viên</option>
-            </select>
           </div>
 
           <button

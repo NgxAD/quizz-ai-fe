@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import StudentLayout from '@/layouts/StudentLayout';
 import classApi from '@/api/class.api';
 import examApi from '@/api/exam.api';
+import submissionApi from '@/api/submission.api';
 
 interface Student {
   _id: string;
@@ -30,6 +31,23 @@ interface Exam {
   totalQuestions?: number;
 }
 
+interface Submission {
+  _id: string;
+  quizId: string | any;
+  userId: string;
+  score?: number;
+  submittedAt?: string;
+  result?: {
+    score: number;
+    correctAnswers: number;
+    wrongAnswers: number;
+    skipped: number;
+    totalPoints: number;
+    isPassed: boolean;
+  };
+  examTitle?: string;
+}
+
 export default function ClassDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -37,9 +55,10 @@ export default function ClassDetailPage() {
 
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [exams, setExams] = useState<Exam[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'exams' | 'students'>('exams');
+  const [activeTab, setActiveTab] = useState<'incomplete' | 'pending' | 'history'>('incomplete');
 
   useEffect(() => {
     if (classId) {
@@ -158,111 +177,61 @@ export default function ClassDetailPage() {
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow">
           <div className="border-b flex">
-            <button
-              onClick={() => setActiveTab('exams')}
-              className={`px-6 py-4 font-semibold transition ${
-                activeTab === 'exams'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
+            <div className="px-6 py-4 font-semibold text-blue-600">
               📝 Danh sách bài giao ({exams.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('students')}
-              className={`px-6 py-4 font-semibold transition ${
-                activeTab === 'students'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              👥 Danh sách học sinh ({classData.students?.length || 0})
-            </button>
+            </div>
           </div>
 
           <div className="p-6">
-            {/* Exams Tab */}
-            {activeTab === 'exams' && (
-              <div className="space-y-4">
-                {exams.length > 0 ? (
-                  <div className="space-y-4">
-                    {exams.map((exam) => (
-                      <div
-                        key={exam._id}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition cursor-pointer"
-                        onClick={() => router.push(`/student/do-exam/${exam._id}`)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{exam.title}</h3>
-                            {exam.description && (
-                              <p className="text-gray-600 text-sm mb-3">{exam.description}</p>
-                            )}
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-500">Thời gian</p>
-                                <p className="font-semibold text-gray-900">{exam.duration || '-'} phút</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Câu hỏi</p>
-                                <p className="font-semibold text-gray-900">{exam.totalQuestions || 0}</p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Điểm đạt</p>
-                                <p className="font-semibold text-gray-900">{exam.passingPercentage || '-'}%</p>
-                              </div>
+            <div className="space-y-4">
+              {exams.length > 0 ? (
+                <div className="space-y-4">
+                  {exams.map((exam) => (
+                    <div
+                      key={exam._id}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition cursor-pointer"
+                      onClick={() => router.push(`/student/do-exam/${exam._id}`)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">{exam.title}</h3>
+                          {exam.description && (
+                            <p className="text-gray-600 text-sm mb-3">{exam.description}</p>
+                          )}
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-500">Thời gian</p>
+                              <p className="font-semibold text-gray-900">{exam.duration || '-'} phút</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Câu hỏi</p>
+                              <p className="font-semibold text-gray-900">{exam.totalQuestions || 0}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Điểm đạt</p>
+                              <p className="font-semibold text-gray-900">{exam.passingPercentage || '-'}%</p>
                             </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/student/do-exam/${exam._id}`);
-                            }}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap ml-4"
-                          >
-                            Làm bài
-                          </button>
                         </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/student/do-exam/${exam._id}`);
+                          }}
+                          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap ml-4"
+                        >
+                          Làm bài
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Chưa có bài tập nào được giao
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Students Tab */}
-            {activeTab === 'students' && (
-              <div className="space-y-4">
-                {classData.students && classData.students.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-100 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-gray-900">Tên học sinh</th>
-                          <th className="text-left p-3 font-semibold text-gray-900">Email</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {classData.students.map((student) => (
-                          <tr key={student._id} className="border-b hover:bg-gray-50">
-                            <td className="p-3 text-gray-900">{student.fullName}</td>
-                            <td className="p-3 text-gray-600">{student.email}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Lớp chưa có học sinh
-                  </div>
-                )}
-              </div>
-            )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Chưa có bài tập nào được giao
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -34,9 +34,9 @@ export default function Login() {
         // Đăng nhập với full user data
         login(user, token);
         
-        if (user.role?.toLowerCase() === 'admin') {
+        if (user.roles?.includes('admin')) {
           router.push('/admin/dashboard');
-        } else if (user.role?.toLowerCase() === 'teacher') {
+        } else if (user.roles?.includes('teacher')) {
           router.push('/teacher/dashboard');
         } else {
           router.push('/student/exams');
@@ -59,10 +59,11 @@ export default function Login() {
       // Force state update and refresh
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Redirect based on role
-      if (response.data.user.role?.toLowerCase() === 'admin') {
+      // Redirect based on roles (priority: admin > teacher > student)
+      const user = response.data.user;
+      if (user.roles?.includes('admin')) {
         router.push('/admin/dashboard');
-      } else if (response.data.user.role?.toLowerCase() === 'teacher') {
+      } else if (user.roles?.includes('teacher')) {
         router.push('/teacher/dashboard');
       } else {
         router.push('/student/exams');
@@ -96,14 +97,14 @@ export default function Login() {
     <>
       {/* Header */}
       <nav className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div
-              className="flex items-center gap-2 cursor-pointer hover:opacity-70"
+              className="flex items-center gap-2 cursor-pointer hover:opacity-70 flex-shrink-0"
               onClick={() => router.push('/')}
             >
               <div className="text-2xl font-bold text-blue-600">📚</div>
-              <h1 className="text-2xl font-bold text-gray-900">Quizz App</h1>
+              <h1 className="text-2xl font-bold text-gray-900">ADTest</h1>
             </div>
             <div className="flex gap-4">
               <Link

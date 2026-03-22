@@ -3,7 +3,7 @@ import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
-  title: "Quizz App",
+  title: "ADTest",
   description: "Quiz application for teachers and students",
 };
 

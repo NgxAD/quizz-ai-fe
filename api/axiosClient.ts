@@ -34,8 +34,8 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid - clear cookies and redirect to login
-      Cookies.remove('accessToken');
-      Cookies.remove('user');
+      Cookies.remove('accessToken', { path: '/' });
+      Cookies.remove('user', { path: '/' });
       delete axiosClient.defaults.headers.common['Authorization'];
       
       // Only redirect if not already on login page
@@ -49,8 +49,8 @@ axiosClient.interceptors.response.use(
 
 // Export a method to clear auth headers
 export const clearAuthHeaders = () => {
-  Cookies.remove('accessToken');
-  Cookies.remove('user');
+  Cookies.remove('accessToken', { path: '/' });
+  Cookies.remove('user', { path: '/' });
   delete axiosClient.defaults.headers.common['Authorization'];
 };
 

@@ -188,7 +188,7 @@ export default function ClassMembersPage() {
                 : 'text-gray-600 border-transparent hover:text-gray-800'
             }`}
           >
-            Bài tập đã giao
+            Bài tập, đề thi
           </button>
         </div>
 
@@ -257,7 +257,7 @@ export default function ClassMembersPage() {
                       placeholder="Tìm kiếm bài tập..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                     />
                   </div>
                   <button

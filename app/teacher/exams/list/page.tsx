@@ -16,6 +16,7 @@ interface Class {
 export default function ExamsListPage() {
   const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -102,6 +103,11 @@ export default function ExamsListPage() {
     }
   };
 
+  // Filter exams based on search term
+  const filteredExams = exams.filter((exam) =>
+    exam.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
@@ -110,6 +116,17 @@ export default function ExamsListPage() {
           <Link href="/teacher/exams/create" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
             Tạo đề mới
           </Link>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Tìm kiếm tên đề..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+          />
         </div>
 
         {error && (
@@ -129,6 +146,8 @@ export default function ExamsListPage() {
             <div className="p-6 text-center text-gray-600">Đang tải...</div>
           ) : exams.length === 0 ? (
             <div className="p-6 text-center text-gray-600">Chưa có đề nào</div>
+          ) : filteredExams.length === 0 ? (
+            <div className="p-6 text-center text-gray-600">Không tìm thấy đề nào phù hợp</div>
           ) : (
             <table className="w-full">
               <thead className="bg-gray-100 border-b">
@@ -141,7 +160,7 @@ export default function ExamsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {exams.map((exam) => (
+                {filteredExams.map((exam) => (
                   <tr key={exam._id} className="border-b hover:bg-gray-50 cursor-pointer">
                     <td className="p-4">
                       <Link

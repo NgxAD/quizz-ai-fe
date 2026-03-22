@@ -12,13 +12,27 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface UpdateProfileResponse {
+  message: string;
+  user: {
+    _id: string;
+    email: string;
+    fullName: string;
+    roles: ('student' | 'teacher' | 'admin')[];
+    avatar?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    isTeacherApproved?: boolean;
+  };
+}
+
 export interface AuthResponse {
   message: string;
   user: {
     _id: string;
     email: string;
     fullName: string;
-    role: string;
+    roles: ('student' | 'teacher' | 'admin')[];
     avatar?: string;
   };
   access_token: string;
@@ -40,8 +54,11 @@ const authApi = {
   downgradeTeacher: () =>
     axiosClient.post<AuthResponse>('/auth/downgrade-teacher'),
 
+  getCurrentUser: () =>
+    axiosClient.get<UpdateProfileResponse>('/auth/me'),
+
   updateProfile: (payload: any) =>
-    axiosClient.patch('/auth/profile', payload),
+    axiosClient.patch<UpdateProfileResponse>('/auth/profile', payload),
 
   logout: () => {
     // Clear token from cookies

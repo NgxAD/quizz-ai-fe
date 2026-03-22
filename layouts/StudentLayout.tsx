@@ -14,7 +14,7 @@ interface StudentLayoutProps {
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const { isChecked } = useStudentRoute();
   const router = useRouter();
-  const { user, logout, updateUser } = useAuthStore();
+  const { user, logout, updateUser, setToken } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -55,14 +55,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const handleSwitchToTeacher = async () => {
     try {
       const response = await authApi.updateRole('teacher');
-      // Update user với role mới và token mới
+      // Update user với roles mới
       if (response.data.user && response.data.access_token) {
-        // Cập nhật user object với role mới (đảm bảo role là lowercase)
         const updatedUser = {
           ...response.data.user,
-          role: (response.data.user.role as any)?.toLowerCase() || 'teacher',
         };
         updateUser(updatedUser);
+        setToken(response.data.access_token);
       }
       setDropdownOpen(false);
       // Delay nhỏ để đảm bảo state được cập nhật trước khi navigate
@@ -92,9 +91,13 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div className="w-64 bg-blue-900 text-white shadow-lg">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Quizz Student</h1>
-        </div>
+        <button
+          onClick={() => router.push('/')}
+          className="w-full p-6 flex items-center gap-2 hover:opacity-80 transition"
+        >
+          <div className="text-3xl font-bold text-blue-300">📚</div>
+          <h1 className="text-2xl font-bold">ADTest</h1>
+        </button>
 
         <nav className="mt-10">
           <Link
@@ -135,7 +138,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                   onClick={handleProfileClick}
                   className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
                 >
-                  Tài khoản
+                  Hồ sơ
                 </button>
                 <div className="border-t border-gray-200"></div>
                 {!user?.isTeacherApproved ? (

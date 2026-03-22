@@ -8,7 +8,7 @@ import TeacherLayout from '@/layouts/TeacherLayout';
 
 export default function TeacherDowngradePage() {
   const router = useRouter();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, setToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
 
   const handleConfirmDowngrade = async () => {
@@ -20,10 +20,10 @@ export default function TeacherDowngradePage() {
       if (response.data.user && response.data.access_token) {
         const updatedUser = {
           ...response.data.user,
-          role: 'student' as const,
-          isTeacherApproved: false,
         };
+        // Update both user AND token
         updateUser(updatedUser);
+        setToken(response.data.access_token);
       }
 
       alert('Bỏ quyền giáo viên thành công');

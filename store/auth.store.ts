@@ -7,11 +7,10 @@ export interface User {
   _id: string;
   email: string;
   fullName: string;
-  role: 'teacher' | 'student' | 'admin';
+  roles: ('teacher' | 'student' | 'admin')[];
   avatar?: string;
   isTeacherApproved?: boolean;
   dateOfBirth?: string;
-  phoneNumber?: string;
   gender?: string;
 }
 
@@ -40,43 +39,58 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => {
         if (user) {
-          Cookies.set('user', JSON.stringify(user), { expires: 1 });
+          Cookies.set('user', JSON.stringify(user), { expires: 7, path: '/' });
           set({ user, isLoggedIn: true });
         } else {
-          Cookies.remove('user');
+          Cookies.remove('user', { path: '/' });
           set({ user: null, isLoggedIn: false });
         }
       },
 
       setToken: (token) => {
         if (token) {
-          Cookies.set('accessToken', token, { expires: 1 });
+          Cookies.set('accessToken', token, { expires: 7, path: '/' });
         } else {
-          Cookies.remove('accessToken');
+          Cookies.remove('accessToken', { path: '/' });
         }
         set({ token });
       },
 
       login: (user, token) => {
-        Cookies.set('accessToken', token, { expires: 1 });
-        Cookies.set('user', JSON.stringify(user), { expires: 1 });
+        // Clear any old data first
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth-store');
+        }
+        // Then set new data
+        Cookies.set('accessToken', token, { expires: 7, path: '/' });
+        Cookies.set('user', JSON.stringify(user), { expires: 7, path: '/' });
         set({ user, token, isLoggedIn: true });
       },
 
       logout: () => {
         clearAuthHeaders();
-        // Clear Zustand persist from localStorage to force fresh state
+        // Clear localStorage FIRST before setting state (persist middleware auto-saves on set)
         if (typeof window !== 'undefined') {
           localStorage.removeItem('auth-store');
         }
+        // Then clear all auth data
         set({ user: null, token: null, isLoggedIn: false });
+        // Finally clear cookies
+        Cookies.remove('accessToken', { path: '/' });
+        Cookies.remove('user', { path: '/' });
       },
 
       setLoading: (loading) => set({ isLoading: loading }),
 
       updateUser: (user) => {
-        Cookies.set('user', JSON.stringify(user), { expires: 1 });
-        set({ user });
+        // Ensure user data is properly saved to both cookie and store
+        if (user) {
+          Cookies.set('user', JSON.stringify(user), { expires: 7, path: '/' });
+          set({ user, isLoggedIn: true });
+        } else {
+          Cookies.remove('user', { path: '/' });
+          set({ user: null, isLoggedIn: false });
+        }
       },
     }),
     {

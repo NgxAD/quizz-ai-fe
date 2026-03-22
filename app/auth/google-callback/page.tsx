@@ -26,16 +26,18 @@ export default function GoogleCallbackPage() {
     }
 
     if (token && userId) {
-      // Store token and redirect based on role
+      // Store token and redirect based on roles
       const user = {
         _id: userId,
-        role: role || 'STUDENT',
+        roles: [role || 'student'],
       };
       
       login(user as any, token);
       
       if (role === 'teacher') {
         router.push('/teacher/dashboard');
+      } else if (role === 'admin') {
+        router.push('/admin/dashboard');
       } else {
         router.push('/student/exams');
       }

@@ -19,6 +19,7 @@ export default function ClassListPage() {
   const router = useRouter();
   const { isLoggedIn, user } = useAuthStore();
   const [classes, setClasses] = useState<Class[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -67,6 +68,11 @@ export default function ClassListPage() {
     }
   };
 
+  // Filter classes based on search term
+  const filteredClasses = classes.filter((cls) =>
+    cls.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
@@ -78,6 +84,17 @@ export default function ClassListPage() {
           >
             Tạo lớp mới
           </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Tìm kiếm tên lớp..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+          />
         </div>
 
         {error && (
@@ -94,6 +111,10 @@ export default function ClassListPage() {
           <div className="bg-white rounded-lg shadow p-6 text-center text-gray-600">
             Chưa có lớp nào
           </div>
+        ) : filteredClasses.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-6 text-center text-gray-600">
+            Không tìm thấy lớp nào phù hợp
+          </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-visible">
             <table className="w-full">
@@ -107,7 +128,7 @@ export default function ClassListPage() {
                 </tr>
               </thead>
               <tbody>
-                {classes.map((cls) => (
+                {filteredClasses.map((cls) => (
                   <tr 
                     key={cls._id} 
                     className="border-b hover:bg-gray-50 transition cursor-pointer"

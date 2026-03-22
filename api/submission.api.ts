@@ -10,9 +10,18 @@ export interface SubmissionPayload {
 
 export interface Submission extends SubmissionPayload {
   _id: string;
-  userId: string;
+  userId: string | {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
   score: number;
   submittedAt: string;
+  userDetails?: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
 }
 
 const submissionApi = {

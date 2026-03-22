@@ -8,7 +8,7 @@ import StudentLayout from '@/layouts/StudentLayout';
 
 export default function RegisterTeacher() {
   const router = useRouter();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, setToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,9 +22,10 @@ export default function RegisterTeacher() {
       if (response.data.user && response.data.access_token) {
         const updatedUser = {
           ...response.data.user,
-          role: (response.data.user.role as any)?.toLowerCase() || 'teacher' as const,
         };
+        // Update both user AND token
         updateUser(updatedUser);
+        setToken(response.data.access_token);
       }
 
       alert('Đăng ký làm giáo viên thành công');

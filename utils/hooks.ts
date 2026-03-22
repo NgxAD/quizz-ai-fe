@@ -32,14 +32,14 @@ export const useTeacherRoute = () => {
     const timer = setTimeout(() => {
       if (!isLoggedIn) {
         router.push('/login');
-      } else if (user?.role?.toLowerCase() !== 'teacher') {
+      } else if (!user?.roles?.includes('teacher')) {
         router.push('/student/exams');
       }
       setIsChecked(true);
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, user?.role, router]);
+  }, [isLoggedIn, user?.roles, router]);
 
   return { isChecked };
 };
@@ -54,14 +54,19 @@ export const useStudentRoute = () => {
     const timer = setTimeout(() => {
       if (!isLoggedIn) {
         router.push('/login');
-      } else if (user?.role?.toLowerCase() !== 'student') {
-        router.push('/teacher/dashboard');
+      } else if (!user?.roles?.includes('student')) {
+        // Redirect to appropriate page if not a student
+        if (user?.roles?.includes('teacher')) {
+          router.push('/teacher/dashboard');
+        } else if (user?.roles?.includes('admin')) {
+          router.push('/admin/dashboard');
+        }
       }
       setIsChecked(true);
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, user?.role, router]);
+  }, [isLoggedIn, user?.roles, router]);
 
   return { isChecked };
 };
@@ -76,14 +81,14 @@ export const useAdminRoute = () => {
     const timer = setTimeout(() => {
       if (!isLoggedIn) {
         router.push('/login');
-      } else if (user?.role?.toLowerCase() !== 'admin') {
+      } else if (!user?.roles?.includes('admin')) {
         router.push('/student/exams');
       }
       setIsChecked(true);
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [isLoggedIn, user, router]);
+  }, [isLoggedIn, user?.roles, router]);
 
   return { isChecked };
 };
