@@ -119,6 +119,18 @@ export default function ClassMembersPage() {
     }
   };
 
+  const handleRemoveExam = async (examId: string, examTitle: string) => {
+    if (confirm(`Bạn chắc chắn muốn xóa bài tập "${examTitle}" khỏi lớp?`)) {
+      try {
+        await classApi.removeExamFromClass(classId, examId);
+        // Reload class and members to sync data from server
+        loadClassAndMembers();
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Lỗi khi xóa bài tập');
+      }
+    }
+  };
+
   // Group exams by date
   const groupedExams = exams.reduce(
     (acc, exam) => {
@@ -290,11 +302,13 @@ export default function ClassMembersPage() {
                             {dateExams.map((exam) => (
                               <div
                                 key={exam._id}
-                                className="bg-white rounded-lg shadow p-4 hover:shadow-md transition cursor-pointer"
-                                onClick={() => router.push(`/teacher/exams/${exam._id}`)}
+                                className="bg-white rounded-lg shadow p-4 hover:shadow-md transition"
                               >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex items-start gap-4 flex-1">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div
+                                    className="flex items-start gap-4 flex-1 cursor-pointer"
+                                    onClick={() => router.push(`/teacher/exams/${exam._id}`)}
+                                  >
                                     <div>
                                       <h4 className="font-semibold text-gray-900 text-lg">
                                         {exam.title}
@@ -309,6 +323,15 @@ export default function ClassMembersPage() {
                                       </p>
                                     </div>
                                   </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveExam(exam._id, exam.title);
+                                    }}
+                                    className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 transition whitespace-nowrap"
+                                  >
+                                    Xóa
+                                  </button>
                                 </div>
                               </div>
                             ))}

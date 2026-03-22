@@ -42,6 +42,9 @@ const classApi = {
 
   assignExamToClass: (classId: string, examId: string) =>
     axiosClient.post(`/classes/${classId}/exams/${examId}`),
+
+  removeExamFromClass: (classId: string, examId: string) =>
+    axiosClient.delete(`/classes/${classId}/exams/${examId}`),
 };
 
 export default classApi;

@@ -32,12 +32,23 @@ export default function DashboardPage() {
       const classesResponse = await classApi.list();
       setTotalClasses(classesResponse.data.length);
 
-      // Sum up all students from all classes
-      const totalStudentsCount = classesResponse.data.reduce(
-        (sum, cls) => sum + (cls.studentCount || 0),
-        0
-      );
-      setTotalStudents(totalStudentsCount);
+      // Get unique students from all classes
+      const uniqueStudentIds = new Set<string>();
+      
+      for (const cls of classesResponse.data) {
+        try {
+          const membersResponse = await classApi.getMembers(cls._id);
+          if (Array.isArray(membersResponse.data)) {
+            membersResponse.data.forEach((member: any) => {
+              uniqueStudentIds.add(member._id);
+            });
+          }
+        } catch (err) {
+          console.error(`Error loading members for class ${cls._id}:`, err);
+        }
+      }
+      
+      setTotalStudents(uniqueStudentIds.size);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
