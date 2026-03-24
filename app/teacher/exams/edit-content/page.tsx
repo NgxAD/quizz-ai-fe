@@ -34,6 +34,7 @@ export default function EditContentPage() {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [currentPreviewQuestion, setCurrentPreviewQuestion] = useState(0);
   const [showQuestionList, setShowQuestionList] = useState(false);
+  const [showGoBackModal, setShowGoBackModal] = useState(false);
 
   useEffect(() => {
     // Get data from session storage
@@ -178,9 +179,14 @@ export default function EditContentPage() {
   };
 
   const handleGoBack = () => {
-    if (hasEdited && !window.confirm('Bạn chưa lưu thay đổi. Bạn có chắc muốn quay lại?')) {
-      return;
+    if (hasEdited) {
+      setShowGoBackModal(true);
+    } else {
+      router.back();
     }
+  };
+
+  const confirmGoBack = () => {
     router.back();
   };
 
@@ -448,6 +454,30 @@ export default function EditContentPage() {
           </div>
         )}
       </div>
+
+      {/* Go Back Modal */}
+      {showGoBackModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Xác nhận quay lại</h2>
+            <p className="text-gray-600 mb-6">Bạn chưa lưu thay đổi. Bạn có chắc muốn quay lại?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowGoBackModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Tiếp tục
+              </button>
+              <button
+                onClick={confirmGoBack}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
+              >
+                Quay lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </TeacherLayout>
   );
 }

@@ -90,32 +90,94 @@ export default function ClassDetailPage() {
         console.error('Error loading members:', err);
       }
 
-      // Load exams
+      // Load exams FIRST (before submissions)
+      let loadedExams: Exam[] = [];
       if (classResponse.data.assignedExams && classResponse.data.assignedExams.length > 0) {
         try {
           const examIds = classResponse.data.assignedExams;
           const examPromises = examIds.map((examId: string) => examApi.getById(examId));
           const examResponses = await Promise.allSettled(examPromises);
-          const loadedExams = examResponses
+          loadedExams = examResponses
             .filter((response) => response.status === 'fulfilled')
             .map((response: any) => response.value.data);
           setExams(loadedExams);
         } catch (err: any) {
           console.error('Error loading exams:', err);
-          // Continue without exams if they fail to load
         }
       }
 
-      // Load submissions history
+      // Load submissions AFTER exams (so we can enrich with exam titles)
       try {
         const submissionsResponse = await submissionApi.getUserSubmissions();
         if (Array.isArray(submissionsResponse.data)) {
-          const mappedSubmissions = submissionsResponse.data.map((s: any) => ({
-            ...s,
-            quizId: s.quizId || (typeof s.examId === 'string' ? s.examId : s.examId?._id),
-            score: s.score || 0,
-            result: s.result || { isPassed: false },
-          })) as Submission[];
+          const mappedSubmissions = submissionsResponse.data.map((s: any) => {
+            const quizId = s.quizId ? (typeof s.quizId === 'string' ? s.quizId : s.quizId._id) : null;
+            
+            // Find exam title and passingPercentage from quizId populated data
+            let examTitle = 'Bài thi';
+            if (s.quizId && typeof s.quizId === 'object') {
+              examTitle = s.quizId.title || 'Bài thi';
+            }
+
+            // Use resultId if available (populated from backend), otherwise compute from answers
+            let resultData: any = {
+              score: 0,
+              correctAnswers: 0,
+              wrongAnswers: 0,
+              skipped: 0,
+              totalPoints: 100,
+              isPassed: false,
+            };
+
+            if (s.resultId && typeof s.resultId === 'object') {
+              // Use populated result - this is the source of truth (calculated at submit time)
+              resultData = {
+                score: s.resultId.score || 0,
+                correctAnswers: s.resultId.correctAnswers || 0,
+                wrongAnswers: s.resultId.wrongAnswers || 0,
+                skipped: s.resultId.skipped || 0,
+                totalPoints: s.resultId.totalPoints || 100,
+                isPassed: s.resultId.isPassed,
+              };
+            } else {
+              // Fallback: compute from answers array (for old submissions without resultId link)
+              let correctAnswers = 0;
+              let wrongAnswers = 0;
+              let skipped = 0;
+
+              if (Array.isArray(s.answers)) {
+                s.answers.forEach((ans: any) => {
+                  if (ans.isCorrect) {
+                    correctAnswers++;
+                  } else if (ans.answer) {
+                    wrongAnswers++;
+                  } else {
+                    skipped++;
+                  }
+                });
+              }
+
+              // Assume passed if more correct than wrong (fallback heuristic)
+              const isPassed = correctAnswers > wrongAnswers;
+
+              resultData = {
+                score: s.score || 0,
+                correctAnswers,
+                wrongAnswers,
+                skipped,
+                totalPoints: s.totalPoints || 100,
+                isPassed,
+              };
+            }
+
+            return {
+              ...s,
+              quizId,
+              examTitle,
+              score: resultData.score,
+              result: resultData,
+            };
+          }) as Submission[];
           setSubmissions(mappedSubmissions);
         }
       } catch (err: any) {
@@ -137,24 +199,47 @@ export default function ClassDetailPage() {
     return submission;
   };
 
-  // Đề thi (test type) chưa hoàn thành - không có submission
+  // Đề thi chưa hoàn thành (test type chưa làm)
   const incompleteExams = exams.filter((exam) => {
-    if (exam.examType !== 'test') return false; // Chỉ lấy type 'test'
+    if (exam.examType !== 'test') return false;
     const submission = getExamStatus(exam._id);
-    return !submission; // Không có submission nào
+    // Test: hiện nếu chưa làm
+    return !submission;
   });
 
-  // Bài tập (exercise type) chưa hoàn thành - không có submission hoặc submit rồi nhưng chưa đạt
+  // Bài tập chưa hoàn thành - exercise type chưa làm hoặc start nhưng chưa submit
   const pendingExams = exams.filter((exam) => {
-    if (exam.examType !== 'exercise') return false; // Chỉ lấy type 'exercise'
+    if (exam.examType !== 'exercise') return false;
     const submission = getExamStatus(exam._id);
-    if (!submission) return true; // Chưa có submission
-    return !submission.result?.isPassed; // Có submission nhưng chưa đạt
+    
+    // Chưa làm
+    if (!submission) return true;
+    // Start nhưng chưa submit
+    if (!submission.submittedAt) return true;
+    // Đã submit - không show ở tab này
+    return false;
   });
 
-  const historySubmissions = submissions.filter((s) => 
-    s.quizId && exams.some((e) => e._id === (typeof s.quizId === 'string' ? s.quizId : s.quizId._id))
-  );
+  const historySubmissions = (() => {
+    // Lọc submissions của class này
+    const classSubmissions = submissions.filter((s) => 
+      s.quizId && exams.some((e) => e._id === (typeof s.quizId === 'string' ? s.quizId : s.quizId._id))
+    );
+
+    // Dedup: chỉ lấy submission mới nhất cho mỗi quizId (tránh hiển thị lại khi student làm lại)
+    const submissionMap = new Map<string, Submission>();
+    classSubmissions.forEach((submission) => {
+      const quizId = typeof submission.quizId === 'string' ? submission.quizId : submission.quizId._id;
+      const existing = submissionMap.get(quizId);
+      
+      // Chỉ giữ submission với submittedAt mới nhất
+      if (!existing || new Date(submission.submittedAt || 0) > new Date(existing.submittedAt || 0)) {
+        submissionMap.set(quizId, submission);
+      }
+    });
+
+    return Array.from(submissionMap.values());
+  })();
 
   if (loading) {
     return (
@@ -279,7 +364,7 @@ export default function ClassDetailPage() {
                               </div>
                               <div>
                                 <p className="text-gray-500">Điểm đạt</p>
-                                <p className="font-semibold text-gray-900">{exam.passingPercentage || '-'}%</p>
+                                <p className="font-semibold text-gray-900">{(exam.passingPercentage || 50) / 10}/10</p>
                               </div>
                             </div>
                           </div>
@@ -311,7 +396,7 @@ export default function ClassDetailPage() {
                       return (
                         <div
                           key={exam._id}
-                          className="border border-yellow-200 rounded-lg p-4 hover:border-yellow-300 hover:shadow-md transition cursor-pointer bg-yellow-50"
+                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition cursor-pointer"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -319,7 +404,7 @@ export default function ClassDetailPage() {
                               {exam.description && (
                                 <p className="text-gray-600 text-sm mb-3">{exam.description}</p>
                               )}
-                              <div className="grid grid-cols-4 gap-4 text-sm">
+                              <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
                                   <p className="text-gray-500">Thời gian</p>
                                   <p className="font-semibold text-gray-900">{exam.duration || '-'} phút</p>
@@ -329,12 +414,8 @@ export default function ClassDetailPage() {
                                   <p className="font-semibold text-gray-900">{exam.totalQuestions || 0}</p>
                                 </div>
                                 <div>
-                                  <p className="text-gray-500">Điểm của bạn</p>
-                                  <p className="font-semibold text-yellow-600">{submission?.score?.toFixed(1) || 0}/{submission?.result?.totalPoints || 0}</p>
-                                </div>
-                                <div>
                                   <p className="text-gray-500">Điểm đạt</p>
-                                  <p className="font-semibold text-gray-900">{exam.passingPercentage || '-'}%</p>
+                                  <p className="font-semibold text-gray-900">{(exam.passingPercentage || 50) / 10}/10</p>
                                 </div>
                               </div>
                             </div>
@@ -343,9 +424,9 @@ export default function ClassDetailPage() {
                                 e.stopPropagation();
                                 router.push(`/student/do-exam/${exam._id}`);
                               }}
-                              className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition whitespace-nowrap ml-4"
+                              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition whitespace-nowrap ml-4"
                             >
-                              Làm lại
+                              Làm bài
                             </button>
                           </div>
                         </div>
@@ -362,46 +443,63 @@ export default function ClassDetailPage() {
               {activeTab === 'history' && (
                 historySubmissions.length > 0 ? (
                   <div className="space-y-4">
-                    {historySubmissions.map((submission) => (
-                      <div
-                        key={submission._id}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-green-300 hover:shadow-md transition cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{submission.examTitle || 'Bài thi'}</h3>
-                            <div className="grid grid-cols-4 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-500">Ngày nộp</p>
-                                <p className="font-semibold text-gray-900">
-                                  {submission.submittedAt 
-                                    ? new Date(submission.submittedAt).toLocaleDateString('vi-VN')
-                                    : '-'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Điểm</p>
-                                <p className={`font-semibold ${submission.result?.isPassed ? 'text-green-600' : 'text-red-600'}`}>
-                                  {submission.result?.score?.toFixed(1) || submission.score?.toFixed(1) || 0}/{submission.result?.totalPoints || 0}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Kết quả</p>
-                                <p className={`font-semibold ${submission.result?.isPassed ? 'text-green-600' : 'text-red-600'}`}>
-                                  {submission.result?.isPassed ? 'Đạt' : 'Không đạt'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Chi tiết</p>
-                                <p className="font-semibold text-gray-900">
-                                  {submission.result?.correctAnswers || 0} đúng / {submission.result?.wrongAnswers || 0} sai
-                                </p>
+                    {historySubmissions.map((submission) => {
+                      // Find exam to check examType
+                      const quizId = typeof submission.quizId === 'string' ? submission.quizId : submission.quizId?._id;
+                      const exam = exams.find((e) => e._id === quizId);
+                      const isExercise = exam?.examType === 'exercise';
+                      
+                      return (
+                        <div
+                          key={submission._id}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-green-300 hover:shadow-md transition cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{submission.examTitle || 'Bài thi'}</h3>
+                              <div className="grid grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <p className="text-gray-500">Ngày nộp</p>
+                                  <p className="font-semibold text-gray-900">
+                                    {submission.submittedAt 
+                                      ? new Date(submission.submittedAt).toLocaleDateString('vi-VN')
+                                      : '-'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Điểm</p>
+                                  <p className={`font-semibold ${submission.result?.isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                                    {((submission.result?.score || 0) / 10).toFixed(1)}/10
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Kết quả</p>
+                                  <p className={`font-semibold ${submission.result?.isPassed ? 'text-green-600' : 'text-red-600'}`}>
+                                    {submission.result?.isPassed ? 'Đạt' : 'Không đạt'}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Chi tiết</p>
+                                  <p className="font-semibold text-gray-900">
+                                    {submission.result?.correctAnswers || 0} đúng / {submission.result?.wrongAnswers || 0} sai
+                                  </p>
+                                </div>
                               </div>
                             </div>
+                            {isExercise && (
+                              <button
+                                onClick={() => {
+                                  router.push(`/student/do-exam/${quizId}?retry=true`);
+                                }}
+                                className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:bg-yellow-600 transition whitespace-nowrap ml-4"
+                              >
+                                Làm lại
+                              </button>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">

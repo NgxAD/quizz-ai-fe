@@ -2,11 +2,12 @@ import axiosClient from './axiosClient';
 
 export interface QuestionPayload {
   content: string;
-  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER';
-  options?: string[];
-  correctAnswer: string;
+  type?: 'multiple_choice' | 'true_false' | 'short_answer';
+  options?: Array<{ text: string; isCorrect: boolean }>;
+  correctAnswer?: string;
   explanation?: string;
-  subjectId: string;
+  quizId?: string;
+  points?: number;
 }
 
 export interface Question extends QuestionPayload {

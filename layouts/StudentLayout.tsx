@@ -17,7 +17,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   const { user, logout, updateUser, setToken } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+
 
   const handleLogout = () => {
     logout();
@@ -73,14 +73,28 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     }
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
+  const handleSwitchToAdmin = async () => {
+    try {
+      const response = await authApi.updateRole('admin');
+      // Update user với roles mới
+      if (response.data.user && response.data.access_token) {
+        const updatedUser = {
+          ...response.data.user,
+        };
+        updateUser(updatedUser);
+        setToken(response.data.access_token);
+      }
+      setDropdownOpen(false);
+      // Delay nhỏ để đảm bảo state được cập nhật trước khi navigate
+      setTimeout(() => {
+        router.push('/admin/dashboard');
+      }, 100);
+    } catch (error) {
+      console.error('Lỗi khi chuyển role:', error);
     }
   };
+
+
 
   // Don't render until route is checked
   if (!isChecked) {
@@ -141,29 +155,48 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
                   Hồ sơ
                 </button>
                 <div className="border-t border-gray-200"></div>
-                {!user?.isTeacherApproved ? (
-                  <button
-                    onClick={handleRegisterTeacher}
-                    className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                  >
-                    Đăng ký làm Giáo viên
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSwitchToTeacher}
-                    className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                  >
-                    Qua màn Giáo viên
-                  </button>
+                {!user?.roles?.includes('admin') && (
+                  <>
+                    {!user?.isTeacherApproved ? (
+                      <button
+                        onClick={handleRegisterTeacher}
+                        className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                      >
+                        Đăng ký làm Giáo viên
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSwitchToTeacher}
+                        className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                      >
+                        Qua màn Giáo viên
+                      </button>
+                    )}
+                    <div className="border-t border-gray-200"></div>
+                  </>
                 )}
-                <div className="border-t border-gray-200"></div>
-                <button
-                  onClick={toggleDarkMode}
-                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                >
-                  {darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
-                </button>
-                <div className="border-t border-gray-200"></div>
+                {user?.roles?.includes('admin') && (
+                  <>
+                    {user?.roles?.includes('teacher') && (
+                      <>
+                        <button
+                          onClick={handleSwitchToTeacher}
+                          className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                        >
+                          Qua màn Giáo viên
+                        </button>
+                        <div className="border-t border-gray-200"></div>
+                      </>
+                    )}
+                    <button
+                      onClick={handleSwitchToAdmin}
+                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                    >
+                      Qua màn Admin
+                    </button>
+                    <div className="border-t border-gray-200"></div>
+                  </>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"

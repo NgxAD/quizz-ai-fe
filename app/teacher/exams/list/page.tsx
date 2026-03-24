@@ -26,6 +26,8 @@ export default function ExamsListPage() {
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [assignLoading, setAssignLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchExams();
@@ -56,15 +58,31 @@ export default function ExamsListPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn chắc chắn muốn xóa đề này?')) {
-      try {
-        await examApi.delete(id);
-        setExams(exams.filter(exam => exam._id !== id));
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Lỗi khi xóa đề');
-        console.error('Error:', err);
-      }
+    setPendingDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    try {
+      setError('');
+      await examApi.delete(pendingDeleteId);
+      setExams(exams.filter(exam => exam._id !== pendingDeleteId));
+      setSuccess('✓ Xóa đề thi thành công!');
+      setTimeout(() => setSuccess(''), 3000);
+      setShowDeleteModal(false);
+      setPendingDeleteId(null);
+      setOpenMenuId(null);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Lỗi khi xóa đề';
+      setError(errorMessage);
+      console.error('Error:', err);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setPendingDeleteId(null);
   };
 
 
@@ -260,6 +278,30 @@ export default function ExamsListPage() {
                   {assignLoading ? 'Đang giao...' : 'Giao'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && pendingDeleteId && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Xóa đề thi</h2>
+            <p className="text-gray-600 mb-6">Bạn chắc chắn muốn xóa đề này?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelDelete}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
+              >
+                Xóa
+              </button>
             </div>
           </div>
         </div>

@@ -24,6 +24,8 @@ export default function ClassListPage() {
   const [error, setError] = useState('');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Refetch when user logs in or role changes
   useEffect(() => {
@@ -57,15 +59,26 @@ export default function ClassListPage() {
   };
 
   const handleDeleteClass = async (id: string) => {
-    if (confirm('Bạn chắc chắn muốn xóa lớp này?')) {
-      try {
-        await classApi.delete(id);
-        loadClasses();
-        setOpenMenuId(null);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Lỗi khi xóa lớp');
-      }
+    setPendingDeleteId(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteClass = async () => {
+    if (!pendingDeleteId) return;
+    try {
+      await classApi.delete(pendingDeleteId);
+      loadClasses();
+      setOpenMenuId(null);
+      setShowDeleteModal(false);
+      setPendingDeleteId(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Lỗi khi xóa lớp');
     }
+  };
+
+  const cancelDeleteClass = () => {
+    setShowDeleteModal(false);
+    setPendingDeleteId(null);
   };
 
   // Filter classes based on search term
@@ -182,6 +195,30 @@ export default function ClassListPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Modal */}
+      {showDeleteModal && pendingDeleteId && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Xóa lớp</h2>
+            <p className="text-gray-600 mb-6">Bạn chắc chắn muốn xóa lớp này?</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelDeleteClass}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteClass}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </TeacherLayout>
   );
 }

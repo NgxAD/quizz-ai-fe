@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import StudentLayout from '@/layouts/StudentLayout';
 import Timer from '@/components/Timer';
 import examApi, { Exam as ExamType } from '@/api/exam.api';
 import submissionApi from '@/api/submission.api';
@@ -25,6 +24,8 @@ export default function DoExamPage() {
   const examId = params?.id as string | undefined;
   const isRetry = searchParams?.get('retry') === 'true';
   const { user } = useAuthStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fullscreenAttemptedRef = useRef(false);
 
   const [exam, setExam] = useState<ExamType | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -37,12 +38,99 @@ export default function DoExamPage() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showQuestionMenu, setShowQuestionMenu] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (examId) {
       loadExam();
     }
   }, [examId]);
+
+  // Only track fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Exit fullscreen when page is unloading
+  useEffect(() => {
+    return () => {
+      exitFullscreenMode();
+    };
+  }, []);
+
+  // Request fullscreen when exam is loaded
+  useEffect(() => {
+    if (exam && !loading && questions.length > 0 && !fullscreenAttemptedRef.current) {
+      fullscreenAttemptedRef.current = true;
+      // Delay to ensure DOM is fully rendered
+      const timer = setTimeout(() => {
+        requestFullscreenMode();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [exam, loading, questions]);
+
+  const requestFullscreenMode = async () => {
+    try {
+      const element = document.documentElement;
+      
+      if (element.requestFullscreen) {
+        await element.requestFullscreen({ navigationUI: 'hide' }).catch((err) => {
+          console.warn('Fullscreen request error:', err?.message);
+        });
+      } else if ((element as any).webkitRequestFullscreen) {
+        (element as any).webkitRequestFullscreen();
+      } else if ((element as any).mozRequestFullScreen) {
+        (element as any).mozRequestFullScreen();
+      } else if ((element as any).msRequestFullscreen) {
+        (element as any).msRequestFullscreen();
+      }
+    } catch (error: any) {
+      console.warn('Fullscreen request warning:', error?.message);
+    }
+  };
+
+  const exitFullscreenMode = async () => {
+    try {
+      const isCurrentlyInFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+
+      if (isCurrentlyInFullscreen) {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      }
+      setIsFullscreen(false);
+    } catch (error) {
+      console.error('Error exiting fullscreen:', error);
+    }
+  };
 
   const loadExam = async () => {
     try {
@@ -235,6 +323,9 @@ export default function DoExamPage() {
       console.log('Submit response:', response);
       setError('');
       
+      // Exit fullscreen mode
+      await exitFullscreenMode();
+      
       // Delay slightly to ensure state updates before navigation
       setTimeout(() => {
         console.log('Navigating to results page');
@@ -254,31 +345,31 @@ export default function DoExamPage() {
 
   if (loading) {
     return (
-      <StudentLayout>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center py-12">
           <div className="text-gray-500">Đang tải đề thi...</div>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <StudentLayout>
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+      <div className="min-h-screen bg-gray-100 p-6 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded max-w-md">
           {error}
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
   if (!exam || questions.length === 0) {
     return (
-      <StudentLayout>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center py-12">
           <div className="text-gray-500">Không tìm thấy đề thi</div>
         </div>
-      </StudentLayout>
+      </div>
     );
   }
 
@@ -288,7 +379,7 @@ export default function DoExamPage() {
   // Guard against undefined question
   if (!currentQuestion) {
     return (
-      <StudentLayout>
+      <div className="min-h-screen bg-gray-100 p-6 flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
           Lỗi: Không tìm thấy câu hỏi. Vui lòng tải lại trang.
         </div>
@@ -298,7 +389,7 @@ export default function DoExamPage() {
         >
           Quay lại
         </button>
-      </StudentLayout>
+      </div>
     );
   }
   
@@ -316,21 +407,23 @@ export default function DoExamPage() {
   const questionDisplayType = getDisplayType(currentQuestion);
 
   return (
-    <StudentLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
-            {exam.description && (
-              <p className="text-gray-600 mt-2">{exam.description}</p>
-            )}
-          </div>
-          {exam.duration && exam.duration > 0 && (
-            <Timer totalSeconds={Number(exam.duration) * 60} onTimeUp={handleTimeUp} />
+    <div ref={containerRef} className="h-screen bg-white overflow-hidden flex flex-col">
+      {/* Header - Full Width */}
+      <div className="bg-white border-b border-gray-200 px-8 py-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">{exam.title}</h1>
+          {exam.description && (
+            <p className="text-gray-600 mt-2">{exam.description}</p>
           )}
         </div>
+        {exam.duration && exam.duration > 0 && (
+          <Timer totalSeconds={Number(exam.duration) * 60} onTimeUp={handleTimeUp} />
+        )}
+      </div>
 
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="space-y-6 max-w-6xl">
         {/* Main Content Layout */}
         {exam.fileContent ? (
           // Single Column Layout - File + Answer Selection Only
@@ -710,7 +803,8 @@ export default function DoExamPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </StudentLayout>
+    </div>
   );
 }

@@ -399,16 +399,16 @@ export default function ExamDetailPage() {
         {/* Submissions Section */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            📊 Kết quả học sinh ({submissions.length})
+            📊 Kết quả học sinh ({submissions.filter(s => s.submittedAt).length})
           </h2>
 
           {submissionsLoading ? (
             <div className="text-center py-8 text-gray-500">
               Đang tải dữ liệu...
             </div>
-          ) : submissions.length === 0 ? (
+          ) : submissions.filter(s => s.submittedAt).length === 0 ? (
             <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-600">
-              Chưa có học sinh nào làm bài tập này
+              Chưa có học sinh nào nộp bài tập này
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -422,7 +422,7 @@ export default function ExamDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {submissions.map((submission) => {
+                  {submissions.filter(s => s.submittedAt).map((submission) => {
                     const studentName = (submission.userId as any)?.fullName || submission.userDetails?.fullName || 'Không xác định';
                     const score = submission.score ?? 0;
                     const scoreOut10 = (score / 10).toFixed(1);

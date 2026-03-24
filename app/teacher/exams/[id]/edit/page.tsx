@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import TeacherLayout from '@/layouts/TeacherLayout';
 import examApi, { Exam as ExamType, Question as QuestionType } from '@/api/exam.api';
 
@@ -35,6 +36,10 @@ export default function EditExamPage() {
   const [error, setError] = useState('');
   const [showAddQuestion, setShowAddQuestion] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const [questionForm, setQuestionForm] = useState<Question>({
     content: '',
@@ -56,14 +61,59 @@ export default function EditExamPage() {
         
         // Load questions from the exam response
         if (response.data.questions && Array.isArray(response.data.questions)) {
-          const loadedQuestions = response.data.questions.map((q: any) => ({
+          const loadedQuestions = response.data.questions.map((q: any) => {
+            // Ensure options is properly formatted
+            let options = q.options || [];
+            
+            // Clean and validate options
+            if (Array.isArray(options) && options.length > 0) {
+              // Convert to proper format with text and isCorrect
+              options = options
+                .map((opt: any) => ({
+                  text: typeof opt === 'string' ? opt : (opt.text || ''),
+                  isCorrect: Boolean(opt.isCorrect),
+                }))
+                .filter(opt => opt.text && opt.text.trim()); // Remove empty options
+              
+              // Ensure at least one option has isCorrect = true
+              if (!options.some((o: any) => o.isCorrect) && options.length > 0) {
+                console.warn(`Question ${q._id}: No correct answer, marking first as correct`);
+                options[0].isCorrect = true;
+              }
+              
+              // Pad with empty options if needed to have 4 total
+              while (options.length < 4) {
+                options.push({ text: '', isCorrect: false });
+              }
+            } else {
+              // If no options, create empty ones
+              options = [
+                { text: '', isCorrect: false },
+                { text: '', isCorrect: false },
+                { text: '', isCorrect: false },
+                { text: '', isCorrect: false },
+              ];
+            }
+            
+            return {
+              _id: q._id,
+              content: q.content || '',
+              type: q.type || 'multiple_choice',
+              options: options,
+              correctAnswer: q.correctAnswer || '',
+              explanation: q.explanation || '',
+            };
+          });
+          
+          console.log('Loaded questions:', loadedQuestions.map((q, idx) => ({
+            index: idx,
             _id: q._id,
-            content: q.content,
-            type: q.type || 'multiple_choice',
-            options: q.options || [],
-            correctAnswer: q.correctAnswer || '',
-            explanation: q.explanation || '',
-          }));
+            contentLength: q.content.length,
+            optionsCount: q.options.length,
+            validOptionsCount: q.options.filter((o: any) => o.text && o.text.trim()).length,
+            hasCorrect: q.options.some((o: any) => o.isCorrect),
+          })));
+          
           setQuestions(loadedQuestions);
         }
       } catch (err: any) {
@@ -133,21 +183,169 @@ export default function EditExamPage() {
   };
 
   const handleDeleteQuestion = (index: number) => {
-    if (window.confirm('Bạn có chắc muốn xóa câu hỏi này?')) {
-      setQuestions(questions.filter((_, i) => i !== index));
+    setPendingDeleteIndex(index);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (pendingDeleteIndex === null) {
+      console.log('No pending delete index');
+      return;
+    }
+
+    console.log('Starting delete for question at index:', pendingDeleteIndex);
+    setDeleteError('');
+    setLoading(true);
+
+    try {
+      const updatedQuestions = questions.filter((_, i) => i !== pendingDeleteIndex);
+      console.log('Updated questions count:', updatedQuestions.length);
+
+      // If no questions left, just close the modal
+      if (updatedQuestions.length === 0) {
+        console.log('No questions remaining after delete');
+        setQuestions(updatedQuestions);
+        setShowDeleteModal(false);
+        setPendingDeleteIndex(null);
+        return;
+      }
+
+      // Validate all remaining questions before sending
+      console.log('Validating remaining questions...');
+      for (let i = 0; i < updatedQuestions.length; i++) {
+        const q = updatedQuestions[i];
+        
+        // Skip validation for new questions (temp IDs) - they can be incomplete while editing
+        if (q._id?.startsWith('temp_')) {
+          console.log(`Skipping validation for new question ${i + 1} (temp ID)`);
+          continue;
+        }
+        
+        console.log(`Validating question ${i + 1}:`, {
+          contentLength: q.content?.length || 0,
+          optionsCount: q.options?.length || 0,
+          hasCorrectAnswer: q.options?.some((o: any) => o.isCorrect) || false,
+        });
+
+        // Check content
+        if (!q.content || q.content.trim() === '') {
+          const msg = `Câu ${i + 1}: Nội dung trống`;
+          console.error(msg);
+          setDeleteError(msg);
+          setLoading(false);
+          return;
+        }
+
+        // Check options exist
+        if (!q.options || q.options.length === 0) {
+          const msg = `Câu ${i + 1}: Không có đáp án`;
+          console.error(msg);
+          setDeleteError(msg);
+          setLoading(false);
+          return;
+        }
+
+        // Check minimum 2 valid options
+        const validOptions = q.options.filter(opt => opt.text && opt.text.trim());
+        if (validOptions.length < 2) {
+          const msg = `Câu ${i + 1}: Chỉ có ${validOptions.length} đáp án hợp lệ (cần 2+)`;
+          console.error(msg);
+          setDeleteError(msg);
+          setLoading(false);
+          return;
+        }
+
+        // Check correct answer selected
+        const hasCorrect = q.options.some((opt: any) => opt.isCorrect);
+        if (!hasCorrect) {
+          const msg = `Câu ${i + 1}: Chưa chọn đáp án đúng`;
+          console.error(msg);
+          setDeleteError(msg);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const mappedQuestions = updatedQuestions.map(mapQuestionForBackend);
+      console.log('✅ All validation passed. Sending delete request with', mappedQuestions.length, 'questions');
+      
+      // Log full payload for debugging
+      const payload = {
+        title: exam!.title,
+        description: exam!.description,
+        duration: exam!.duration,
+        passingPercentage: exam!.passingPercentage,
+        type: exam!.type,
+        questions: mappedQuestions,
+      };
+      
+      console.log('=== FULL PAYLOAD ===');
+      console.log('Exam info:', {
+        title: payload.title,
+        description: payload.description,
+        duration: payload.duration,
+        passingPercentage: payload.passingPercentage,
+        type: payload.type,
+      });
+      console.log('Questions:', mappedQuestions.map((q, idx) => ({
+        index: idx,
+        _id: q._id,
+        content: q.content.substring(0, 40) + '...',
+        type: q.type,
+        optionsCount: q.options.length,
+        options: q.options,
+        hasCorrect: q.options.some((o: any) => o.isCorrect),
+      })));
+      console.log('=== END PAYLOAD ===');
+
+      const response = await examApi.updateExamWithQuestions(examId!, payload);
+
+      console.log('Delete successful:', response);
+      setQuestions(updatedQuestions);
+      setShowDeleteModal(false);
+      setPendingDeleteIndex(null);
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      const errorMsg = err.response?.data?.message || err.message || 'Lỗi không xác định';
+      console.error('Backend error message:', errorMsg);
+      setDeleteError(errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
   const mapQuestionForBackend = (question: Question) => {
-    // All questions are now multiple choice only
-    return {
-      _id: question._id,
-      content: question.content,
+    // Validate and clean options
+    const cleanOptions = question.options
+      ?.filter(opt => opt && opt.text && opt.text.trim())
+      ?.map(opt => ({
+        text: opt.text.trim(),
+        isCorrect: Boolean(opt.isCorrect),
+      })) || [];
+
+    const mapped: any = {
+      content: question.content.trim(),
       type: 'multiple-choice',
-      options: question.options,
+      options: cleanOptions,
       answer: '', // For multiple choice, answer is determined by options with isCorrect: true
-      explanation: question.explanation || '',
+      explanation: (question.explanation || '').trim(),
     };
+
+    // Only include _id if it's not a temporary question (doesn't start with 'temp_')
+    if (question._id && !question._id.startsWith('temp_')) {
+      mapped._id = question._id;
+    }
+
+    console.log('Mapped question:', {
+      _id: mapped._id,
+      content: mapped.content.substring(0, 30),
+      type: mapped.type,
+      optionsCount: mapped.options.length,
+      hasCorrectAnswer: mapped.options.some((opt: any) => opt.isCorrect),
+      options: mapped.options,
+    });
+
+    return mapped;
   };
 
   const handleSaveExam = async () => {
@@ -216,6 +414,21 @@ export default function EditExamPage() {
         questions: mappedQuestions,
       });
 
+      // Update state with the actual question IDs from backend
+      if (response.data.questions && Array.isArray(response.data.questions)) {
+        const updatedQuestions = questions.map((q, idx) => {
+          const backendQuestion = response.data.questions?.[idx];
+          if (backendQuestion && backendQuestion._id) {
+            return {
+              ...q,
+              _id: backendQuestion._id,
+            };
+          }
+          return q;
+        });
+        setQuestions(updatedQuestions);
+      }
+
       // Reload to get the latest data from backend
       router.push(`/teacher/exams/${examId}`);
     } catch (err: any) {
@@ -233,9 +446,11 @@ export default function EditExamPage() {
   };
 
   const handleCancel = () => {
-    if (window.confirm('Hủy tạo đề? Thông tin sẽ không được lưu.')) {
-      router.push('/teacher/exams/list');
-    }
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = () => {
+    router.push('/teacher/exams/list');
   };
 
   if (!exam) {
@@ -347,24 +562,12 @@ export default function EditExamPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900">📝 Danh sách câu hỏi ({questions.length})</h2>
-            <button
-              onClick={() => {
-                setShowAddQuestion(true);
-                setQuestionForm({
-                  content: '',
-                  type: 'multiple_choice',
-                  options: [
-                    { text: '', isCorrect: false },
-                    { text: '', isCorrect: false },
-                    { text: '', isCorrect: false },
-                    { text: '', isCorrect: false },
-                  ],
-                });
-              }}
+            <Link
+              href={`/teacher/exams/${examId}/add-questions`}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
             >
               + Thêm câu hỏi
-            </button>
+            </Link>
           </div>
 
           {/* Add/Edit Question Form */}
@@ -475,7 +678,7 @@ export default function EditExamPage() {
                   </h3>
                   <button
                     onClick={() => handleDeleteQuestion(idx)}
-                    className="text-red-600 hover:text-red-700 font-bold transition"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded transition"
                     title="Xóa"
                   >
                     🗑️
@@ -570,6 +773,67 @@ export default function EditExamPage() {
           </button>
         </div>
       </div>
+
+      {/* Delete Question Modal */}
+      {showDeleteModal && pendingDeleteIndex !== null && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Xóa câu hỏi</h2>
+            <p className="text-gray-600 mb-6">Bạn có chắc muốn xóa câu hỏi này?</p>
+            
+            {deleteError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-4 text-sm">
+                {deleteError}
+              </div>
+            )}
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setPendingDeleteIndex(null);
+                  setDeleteError('');
+                }}
+                disabled={loading}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDeleteQuestion}
+                disabled={loading}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Hủy tạo đề</h2>
+            <p className="text-gray-600 mb-6">Hủy tạo đề? Thông tin sẽ không được lưu.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Tiếp tục
+              </button>
+              <button
+                onClick={confirmCancel}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </TeacherLayout>
   );
 }

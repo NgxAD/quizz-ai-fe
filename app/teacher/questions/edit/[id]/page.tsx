@@ -43,7 +43,19 @@ export default function EditQuestionPage() {
     try {
       setUpdating(true);
       setError('');
-      await questionApi.update(id, data);
+      
+      // Transform options format: string[] -> Array<{text, isCorrect}>
+      const transformedData = {
+        ...data,
+        options: data.type === 'MULTIPLE_CHOICE' && data.options
+          ? data.options.map(option => ({
+              text: option,
+              isCorrect: option === data.correctAnswer,
+            }))
+          : undefined,
+      };
+      
+      await questionApi.update(id, transformedData);
       alert('Câu hỏi đã được cập nhật thành công!');
       router.push('/teacher/questions/list');
     } catch (err: any) {

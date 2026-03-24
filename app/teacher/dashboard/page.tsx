@@ -24,8 +24,8 @@ export default function DashboardPage() {
     try {
       setLoading(true);
 
-      // Get total exams
-      const examsResponse = await examApi.list();
+      // Get total published exams (match the list page)
+      const examsResponse = await examApi.list('published');
       setTotalExams(examsResponse.data.length);
 
       // Get total classes and students

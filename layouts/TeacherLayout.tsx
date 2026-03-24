@@ -17,7 +17,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, logout, updateUser, setToken } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [darkMode, setDarkMode] = useState(false);
+
 
   const handleLogout = () => {
     logout();
@@ -72,14 +72,27 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
     setDropdownOpen(false);
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (darkMode) {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
+  const handleSwitchToAdmin = async () => {
+    try {
+      const response = await authApi.updateRole('admin');
+      // Update user với roles mới
+      if (response.data.user && response.data.access_token) {
+        const updatedUser = {
+          ...response.data.user,
+        };
+        updateUser(updatedUser);
+        setToken(response.data.access_token);
+      }
+      setDropdownOpen(false);
+      setTimeout(() => {
+        router.push('/admin/dashboard');
+      }, 100);
+    } catch (error) {
+      console.error('Lỗi khi chuyển role:', error);
     }
   };
+
+
 
   // Don't render until route is checked
   if (!isChecked) {
@@ -165,19 +178,27 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
                   Qua màn Học sinh
                 </button>
                 <div className="border-t border-gray-200"></div>
-                <button
-                  onClick={handleDowngradeTeacher}
-                  className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition font-semibold"
-                >
-                  Bỏ quyền Giáo viên
-                </button>
-                <div className="border-t border-gray-200"></div>
-                <button
-                  onClick={toggleDarkMode}
-                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
-                >
-                  {darkMode ? 'Chế độ sáng' : 'Chế độ tối'}
-                </button>
+                {user?.roles?.includes('admin') && (
+                  <>
+                    <button
+                      onClick={handleSwitchToAdmin}
+                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                    >
+                      Qua màn Admin
+                    </button>
+                    <div className="border-t border-gray-200"></div>
+                  </>
+                )}
+                {!user?.roles?.includes('admin') && (
+                  <>
+                    <button
+                      onClick={handleDowngradeTeacher}
+                      className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition font-semibold"
+                    >
+                      Bỏ quyền Giáo viên
+                    </button>
+                  </>
+                )}
                 <div className="border-t border-gray-200"></div>
                 <button
                   onClick={handleLogout}

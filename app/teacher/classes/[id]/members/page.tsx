@@ -40,7 +40,13 @@ export default function ClassMembersPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [removingExamId, setRemovingExamId] = useState<string | null>(null);
+  
+  // Modal states
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<{ type: 'student' | 'exam'; id: string; name: string } | null>(null);
 
   // Helper function to safely format date
   const formatDate = (dateString: string | undefined): string => {
@@ -108,27 +114,54 @@ export default function ClassMembersPage() {
     }
   };
 
-  const handleRemoveStudent = async (studentId: string) => {
-    if (confirm('Bạn chắc chắn muốn xóa học sinh này khỏi lớp?')) {
-      try {
-        await classApi.removeMember(classId, studentId);
-        loadClassAndMembers();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Lỗi khi xóa học sinh');
-      }
-    }
+  const handleRemoveStudent = async (studentId: string, studentName: string) => {
+    setPendingRemoval({ type: 'student', id: studentId, name: studentName });
+    setShowRemoveModal(true);
   };
 
   const handleRemoveExam = async (examId: string, examTitle: string) => {
-    if (confirm(`Bạn chắc chắn muốn xóa bài tập "${examTitle}" khỏi lớp?`)) {
-      try {
-        await classApi.removeExamFromClass(classId, examId);
-        // Reload class and members to sync data from server
-        loadClassAndMembers();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Lỗi khi xóa bài tập');
+    setPendingRemoval({ type: 'exam', id: examId, name: examTitle });
+    setShowRemoveModal(true);
+  };
+
+  const confirmRemoval = async () => {
+    if (!pendingRemoval) return;
+
+    try {
+      setError('');
+      setSuccess('');
+
+      if (pendingRemoval.type === 'student') {
+        await classApi.removeMember(classId, pendingRemoval.id);
+        setSuccess(`✓ Đã xóa học sinh khỏi lớp`);
+      } else if (pendingRemoval.type === 'exam') {
+        setRemovingExamId(pendingRemoval.id);
+        await classApi.removeExamFromClass(classId, pendingRemoval.id);
+        setExams((prevExams) => prevExams.filter((exam) => exam._id !== pendingRemoval.id));
+        if (classData) {
+          setClassData({
+            ...classData,
+            assignedExams: (classData.assignedExams || []).filter((id: string) => id !== pendingRemoval.id)
+          });
+        }
+        setSuccess(`✓ Đã xóa bài tập "${pendingRemoval.name}" khỏi lớp`);
+        setRemovingExamId(null);
       }
+
+      setTimeout(() => setSuccess(''), 3000);
+      setShowRemoveModal(false);
+      setPendingRemoval(null);
+      loadClassAndMembers();
+    } catch (err: any) {
+      const errorMsg = pendingRemoval.type === 'student' ? 'Lỗi khi xóa học sinh' : 'Lỗi khi xóa bài tập';
+      setError(err.response?.data?.message || errorMsg);
+      console.error('Error:', err);
     }
+  };
+
+  const cancelRemoval = () => {
+    setShowRemoveModal(false);
+    setPendingRemoval(null);
   };
 
   // Group exams by date
@@ -210,6 +243,12 @@ export default function ClassMembersPage() {
           </div>
         )}
 
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+            {success}
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12">
             <div className="text-gray-500">Đang tải...</div>
@@ -244,7 +283,7 @@ export default function ClassMembersPage() {
                             </td>
                             <td className="p-4 text-right">
                               <button
-                                onClick={() => handleRemoveStudent(student._id)}
+                                onClick={() => handleRemoveStudent(student._id, student.fullName)}
                                 className="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600 transition"
                               >
                                 Xóa
@@ -328,9 +367,10 @@ export default function ClassMembersPage() {
                                       e.stopPropagation();
                                       handleRemoveExam(exam._id, exam.title);
                                     }}
-                                    className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 transition whitespace-nowrap"
+                                    disabled={removingExamId === exam._id}
+                                    className="bg-red-500 text-white px-4 py-2 rounded text-sm hover:bg-red-600 transition whitespace-nowrap disabled:bg-gray-400 disabled:cursor-not-allowed"
                                   >
-                                    Xóa
+                                    {removingExamId === exam._id ? 'Đang xóa...' : 'Xóa'}
                                   </button>
                                 </div>
                               </div>
@@ -344,6 +384,36 @@ export default function ClassMembersPage() {
               </>
             )}
           </>
+        )}
+
+        {/* Confirmation Modal */}
+        {showRemoveModal && pendingRemoval && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                {pendingRemoval.type === 'student' ? 'Xóa học sinh' : 'Xóa bài tập'}
+              </h2>
+              <p className="text-gray-600 mb-6">
+                {pendingRemoval.type === 'student'
+                  ? `Bạn chắc chắn muốn xóa học sinh "${pendingRemoval.name}" khỏi lớp?`
+                  : `Bạn chắc chắn muốn xóa bài tập "${pendingRemoval.name}" khỏi lớp?`}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelRemoval}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmRemoval}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition"
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </TeacherLayout>

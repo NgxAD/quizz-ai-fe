@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
+import authApi from '@/api/auth.api';
 import { ReactNode, useState } from 'react';
 import { useAdminRoute } from '@/utils/hooks';
 
@@ -13,9 +14,10 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { isChecked } = useAdminRoute();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateUser, setToken } = useAuthStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null);
+
 
   const handleLogout = () => {
     logout();
@@ -23,6 +25,53 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       router.push('/');
     }, 100);
   };
+
+  const handleProfileClick = () => {
+    router.push('/admin/profile');
+    setDropdownOpen(false);
+  };
+
+  const handleSwitchToStudent = async () => {
+    try {
+      const response = await authApi.updateRole('student');
+      // Update user với roles mới
+      if (response.data.user && response.data.access_token) {
+        const updatedUser = {
+          ...response.data.user,
+        };
+        updateUser(updatedUser);
+        setToken(response.data.access_token);
+      }
+      setDropdownOpen(false);
+      setTimeout(() => {
+        router.push('/student/exams');
+      }, 100);
+    } catch (error) {
+      console.error('Lỗi khi chuyển role:', error);
+    }
+  };
+
+  const handleSwitchToTeacher = async () => {
+    try {
+      const response = await authApi.updateRole('teacher');
+      // Update user với roles mới
+      if (response.data.user && response.data.access_token) {
+        const updatedUser = {
+          ...response.data.user,
+        };
+        updateUser(updatedUser);
+        setToken(response.data.access_token);
+      }
+      setDropdownOpen(false);
+      setTimeout(() => {
+        router.push('/teacher/dashboard');
+      }, 100);
+    } catch (error) {
+      console.error('Lỗi khi chuyển role:', error);
+    }
+  };
+
+
 
   const handleMouseEnter = () => {
     if (closeTimeout) {
@@ -97,6 +146,35 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {/* Dropdown Menu */}
             {dropdownOpen && (
               <div className="absolute -right-12 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                <button
+                  onClick={handleProfileClick}
+                  className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                >
+                  Hồ sơ
+                </button>
+                <div className="border-t border-gray-200"></div>
+                {user?.roles?.includes('teacher') && (
+                  <>
+                    <button
+                      onClick={handleSwitchToTeacher}
+                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                    >
+                      Qua màn Giáo viên
+                    </button>
+                    <div className="border-t border-gray-200"></div>
+                  </>
+                )}
+                {user?.roles?.includes('student') && (
+                  <>
+                    <button
+                      onClick={handleSwitchToStudent}
+                      className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"
+                    >
+                      Qua màn Học sinh
+                    </button>
+                    <div className="border-t border-gray-200"></div>
+                  </>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-3 text-gray-800 hover:bg-gray-100 transition font-semibold"

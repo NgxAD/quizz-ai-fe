@@ -98,8 +98,8 @@ export default function CreateExamPage() {
       sessionStorage.setItem('currentExam', JSON.stringify(response.data));
       sessionStorage.setItem('examQuestions', JSON.stringify([]));
       
-      // Redirect to edit/add questions page
-      router.push(`/teacher/exams/${response.data._id}/edit`);
+      // Redirect to compose questions page
+      router.push(`/teacher/exams/${response.data._id}/compose-questions`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Tạo đề thất bại');
       console.error('Error:', err);
