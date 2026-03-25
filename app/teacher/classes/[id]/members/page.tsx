@@ -42,6 +42,7 @@ export default function ClassMembersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchTermMembers, setSearchTermMembers] = useState('');
   const [removingExamId, setRemovingExamId] = useState<string | null>(null);
   
   // Modal states
@@ -263,37 +264,61 @@ export default function ClassMembersPage() {
                     Chưa có học sinh nào tham gia lớp
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b">
-                        <tr>
-                          <th className="text-left p-4 font-semibold text-gray-700">Tên học sinh</th>
-                          <th className="text-left p-4 font-semibold text-gray-700">Email</th>
-                          <th className="text-left p-4 font-semibold text-gray-700">Ngày tham gia</th>
-                          <th className="text-right p-4 font-semibold text-gray-700">Hành động</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student) => (
-                          <tr key={student._id} className="border-b hover:bg-gray-50 transition">
-                            <td className="p-4 font-semibold text-gray-900">{student.fullName}</td>
-                            <td className="p-4 text-gray-600">{student.email}</td>
-                            <td className="p-4 text-gray-600">
-                              {formatDate(student.joinedAt)}
-                            </td>
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => handleRemoveStudent(student._id, student.fullName)}
-                                className="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600 transition"
-                              >
-                                Xóa
-                              </button>
-                            </td>
+                  <>
+                    <div className="flex-1 relative mb-6">
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm học sinh..."
+                        value={searchTermMembers}
+                        onChange={(e) => setSearchTermMembers(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                      />
+                    </div>
+                    <div className="bg-white rounded-lg shadow overflow-hidden">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left p-4 font-semibold text-gray-700">Tên học sinh</th>
+                            <th className="text-left p-4 font-semibold text-gray-700">Email</th>
+                            <th className="text-left p-4 font-semibold text-gray-700">Ngày tham gia</th>
+                            <th className="text-right p-4 font-semibold text-gray-700">Hành động</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {students
+                            .filter((student) =>
+                              student.fullName.toLowerCase().includes(searchTermMembers.toLowerCase()) ||
+                              student.email.toLowerCase().includes(searchTermMembers.toLowerCase())
+                            )
+                            .map((student) => (
+                              <tr key={student._id} className="border-b hover:bg-gray-50 transition">
+                                <td className="p-4 font-semibold text-gray-900">{student.fullName}</td>
+                                <td className="p-4 text-gray-600">{student.email}</td>
+                                <td className="p-4 text-gray-600">
+                                  {formatDate(student.joinedAt)}
+                                </td>
+                                <td className="p-4 text-right">
+                                  <button
+                                    onClick={() => handleRemoveStudent(student._id, student.fullName)}
+                                    className="bg-red-500 text-white px-4 py-1 rounded text-sm hover:bg-red-600 transition"
+                                  >
+                                    Xóa
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                      {students.filter((student) =>
+                        student.fullName.toLowerCase().includes(searchTermMembers.toLowerCase()) ||
+                        student.email.toLowerCase().includes(searchTermMembers.toLowerCase())
+                      ).length === 0 && (
+                        <div className="p-4 text-center text-gray-600">
+                          Không tìm thấy học sinh phù hợp
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </>
             )}

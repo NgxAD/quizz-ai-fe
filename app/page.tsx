@@ -27,9 +27,17 @@ export default function Home() {
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
+                    {user?.avatar ? (
+                      <img
+                        src={user.avatar}
+                        alt={user.fullName}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                      </div>
+                    )}
                     <span className="text-gray-700 font-medium text-sm">{user?.fullName}</span>
                   </button>
 

@@ -116,7 +116,7 @@ export default function TeacherLayout({ children }: TeacherLayoutProps) {
             href="/teacher/dashboard"
             className="block px-6 py-3 hover:bg-gray-800 transition"
           >
-            Tổng quan
+            Màn hình chính
           </Link>
           <Link
             href="/teacher/classes/list"

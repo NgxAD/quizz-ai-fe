@@ -483,66 +483,68 @@ export default function EditExamPage() {
         )}
 
         {/* Exam Info */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-2xl">📋</span>
-            <h2 className="text-xl font-bold text-gray-900">Nhập thông tin</h2>
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-lg">📋</span>
+            <h2 className="text-lg font-bold text-gray-900">Nhập thông tin</h2>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Tên đề
-              </label>
-              <input
-                type="text"
-                value={exam.title}
-                onChange={(e) => setExam({ ...exam, title: e.target.value })}
-                className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1 text-sm">
+                  Tên đề
+                </label>
+                <input
+                  type="text"
+                  value={exam.title}
+                  onChange={(e) => setExam({ ...exam, title: e.target.value })}
+                  className="w-full border rounded p-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-1 text-sm">
+                  Loại đề
+                </label>
+                <select
+                  value={exam.type || 'exercise'}
+                  onChange={(e) => setExam({ ...exam, type: e.target.value as 'exercise' | 'test' })}
+                  className="w-full border rounded p-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="exercise">📝 Bài tập</option>
+                  <option value="test">✅ Bài kiểm tra</option>
+                </select>
+              </div>
             </div>
 
             <div>
-              <label className="block text-gray-700 font-semibold mb-2">
-                Loại đề
-              </label>
-              <select
-                value={exam.type || 'exercise'}
-                onChange={(e) => setExam({ ...exam, type: e.target.value as 'exercise' | 'test' })}
-                className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="exercise">📝 Bài tập</option>
-                <option value="test">✅ Bài kiểm tra</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">
+              <label className="block text-gray-700 font-semibold mb-1 text-sm">
                 Mô tả
               </label>
               <textarea
                 value={exam.description || ''}
                 onChange={(e) => setExam({ ...exam, description: e.target.value })}
-                className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                rows={3}
+                className="w-full border rounded p-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={2}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">
+                <label className="block text-gray-700 font-semibold mb-1 text-sm">
                   Thời gian (phút)
                 </label>
                 <input
                   type="number"
                   value={exam.duration || 60}
                   onChange={(e) => setExam({ ...exam, duration: parseInt(e.target.value) })}
-                  className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border rounded p-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">
+                <label className="block text-gray-700 font-semibold mb-1 text-sm">
                   Điểm đạt (%)
                 </label>
                 <input
@@ -551,7 +553,7 @@ export default function EditExamPage() {
                   onChange={(e) => setExam({ ...exam, passingPercentage: parseInt(e.target.value) })}
                   min="0"
                   max="100"
-                  className="w-full border rounded p-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border rounded p-2 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>

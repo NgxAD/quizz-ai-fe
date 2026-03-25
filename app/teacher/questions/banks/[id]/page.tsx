@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import questionBankApi, { QuestionBank } from '@/api/question-bank.api';
+import questionApi from '@/api/question.api';
 
 export default function BankDetailPage() {
   const params = useParams();
@@ -19,6 +20,17 @@ export default function BankDetailPage() {
   const [deletingQuestion, setDeletingQuestion] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+  const [editingQuestionContent, setEditingQuestionContent] = useState('');
+  const [editingQuestionAnswer, setEditingQuestionAnswer] = useState('');
+  const [editingQuestionOptions, setEditingQuestionOptions] = useState<Array<{text: string; isCorrect: boolean}>>([
+    {text: '', isCorrect: false},
+    {text: '', isCorrect: false},
+    {text: '', isCorrect: false},
+    {text: '', isCorrect: false},
+  ]);
+  const [savingQuestion, setSavingQuestion] = useState(false);
 
   useEffect(() => {
     fetchBank();
@@ -95,6 +107,95 @@ export default function BankDetailPage() {
     router.push(`/teacher/questions/banks/${bankId}/edit`);
   };
 
+  const handleEditQuestion = (question: any) => {
+    setEditingQuestion(question);
+    setEditingQuestionContent(question.content);
+    setEditingQuestionAnswer(question.correctAnswer || '');
+    // Initialize options from question or create empty ones
+    if (question.options && question.options.length > 0) {
+      setEditingQuestionOptions(question.options);
+    } else {
+      setEditingQuestionOptions([
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+      ]);
+    }
+    setShowEditQuestionModal(true);
+  };
+
+  const saveEditedQuestion = async () => {
+    if (!editingQuestion || !editingQuestionContent.trim()) return;
+    try {
+      setSavingQuestion(true);
+      const updateData: any = {
+        content: editingQuestionContent,
+      };
+      
+      // If question has options, update options instead of correctAnswer
+      if (editingQuestionOptions && editingQuestionOptions.length > 0) {
+        updateData.options = editingQuestionOptions;
+      } else {
+        updateData.correctAnswer = editingQuestionAnswer;
+      }
+      
+      await questionApi.update(editingQuestion._id, updateData);
+      
+      // Update local state
+      if (bank) {
+        const updatedQuestions = (bank.questions as any[]).map((q) => {
+          if (q._id === editingQuestion._id) {
+            const updated: any = { 
+              ...q, 
+              content: editingQuestionContent,
+            };
+            if (editingQuestionOptions && editingQuestionOptions.length > 0) {
+              updated.options = editingQuestionOptions;
+            } else {
+              updated.correctAnswer = editingQuestionAnswer;
+            }
+            return updated;
+          }
+          return q;
+        });
+        setBank({
+          ...bank,
+          questions: updatedQuestions,
+        });
+      }
+      
+      setShowEditQuestionModal(false);
+      setEditingQuestion(null);
+      setEditingQuestionContent('');
+      setEditingQuestionAnswer('');
+      setEditingQuestionOptions([
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+        {text: '', isCorrect: false},
+      ]);
+    } catch (error) {
+      console.error('Lỗi khi cập nhật câu hỏi:', error);
+      alert('Không thể cập nhật câu hỏi');
+    } finally {
+      setSavingQuestion(false);
+    }
+  };
+
+  const cancelEditQuestion = () => {
+    setShowEditQuestionModal(false);
+    setEditingQuestion(null);
+    setEditingQuestionContent('');
+    setEditingQuestionAnswer('');
+    setEditingQuestionOptions([
+      {text: '', isCorrect: false},
+      {text: '', isCorrect: false},
+      {text: '', isCorrect: false},
+      {text: '', isCorrect: false},
+    ]);
+  };
+
   const handleViewQuestion = (question: any) => {
     setSelectedQuestion(question);
     setShowDetailModal(true);
@@ -142,6 +243,14 @@ export default function BankDetailPage() {
   return (
     <TeacherLayout>
       <div className="space-y-6">
+        {/* Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="text-gray-900 hover:text-gray-700 font-semibold flex items-center gap-2"
+        >
+          ← Quay lại
+        </button>
+
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-start mb-4">
@@ -154,41 +263,23 @@ export default function BankDetailPage() {
                 Tạo lúc: {new Date(bank.createdAt).toLocaleDateString('vi-VN')}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div>
               <Link
                 href={`/teacher/questions/banks/${bankId}/create-question`}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition"
               >
                 + Tạo câu hỏi mới
               </Link>
-              <button
-                onClick={handleEdit}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition"
-              >
-                Sửa
-              </button>
-              <button
-                onClick={handleDelete}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition"
-              >
-                Xóa
-              </button>
             </div>
           </div>
         </div>
 
         {/* Questions */}
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="mb-4">
             <h2 className="text-xl font-bold text-gray-900">
               Câu hỏi trong ngân hàng ({bank.totalQuestions})
             </h2>
-            <Link
-              href={`/teacher/questions/banks/${bankId}/add-questions`}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition"
-            >
-              + Thêm câu hỏi
-            </Link>
           </div>
 
           {bank.totalQuestions === 0 ? (
@@ -217,13 +308,28 @@ export default function BankDetailPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleDeleteQuestion(question._id)}
-                          disabled={deletingQuestion}
-                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition disabled:opacity-50"
-                        >
-                          {deletingQuestion && pendingDeleteQuestionId === question._id ? 'Xóa...' : 'Xóa'}
-                        </button>
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => handleEditQuestion(question)}
+                            className="p-2 hover:bg-blue-100 rounded transition text-blue-600 hover:text-blue-700"
+                            title="Sửa"
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" />
+                              <path d="M20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQuestion(question._id)}
+                            disabled={deletingQuestion}
+                            className="p-2 hover:bg-red-100 rounded transition text-red-600 hover:text-red-700 disabled:opacity-50"
+                            title="Xóa"
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-9l-1 1H5v2h14V4z" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -287,6 +393,85 @@ export default function BankDetailPage() {
                   className="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 rounded-lg font-semibold transition"
                 >
                   Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Question Modal */}
+        {showEditQuestionModal && editingQuestion && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Sửa câu hỏi</h2>
+              
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Nội dung câu hỏi</label>
+                <textarea
+                  value={editingQuestionContent}
+                  onChange={(e) => setEditingQuestionContent(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                  placeholder="Nhập nội dung câu hỏi"
+                  rows={4}
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-900 mb-4">Đáp án</label>
+                <div className="space-y-3">
+                  {editingQuestionOptions.map((option, index) => {
+                    const answerLabel = String.fromCharCode(65 + index); // A, B, C, D
+                    return (
+                      <div key={index} className="flex items-center gap-3">
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id={`option-${index}`}
+                            name="correct-answer"
+                            checked={option.isCorrect}
+                            onChange={() => {
+                              const updated = editingQuestionOptions.map((opt, i) => ({
+                                ...opt,
+                                isCorrect: i === index,
+                              }));
+                              setEditingQuestionOptions(updated);
+                            }}
+                            className="w-4 h-4 text-green-600 cursor-pointer"
+                          />
+                        </div>
+                        <label htmlFor={`option-${index}`} className="min-w-fit font-bold text-gray-900 px-3 py-1 bg-gray-200 rounded cursor-pointer">
+                          {answerLabel}
+                        </label>
+                        <input
+                          type="text"
+                          value={option.text}
+                          onChange={(e) => {
+                            const updated = [...editingQuestionOptions];
+                            updated[index].text = e.target.value;
+                            setEditingQuestionOptions(updated);
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                          placeholder={`Nhập đáp án ${answerLabel}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelEditQuestion}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={saveEditedQuestion}
+                  disabled={savingQuestion}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {savingQuestion ? 'Đang lưu...' : 'Lưu'}
                 </button>
               </div>
             </div>

@@ -32,9 +32,87 @@ export default function ComposeExamPage() {
   const [success, setSuccess] = useState('');
   const [focusedInputType, setFocusedInputType] = useState<'title' | 'content' | `option-${number}` | null>(null);
 
+  // Formula modal states
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [formulaInput, setFormulaInput] = useState('');
+  const [targetFormulaField, setTargetFormulaField] = useState<'title' | 'content' | `option-${number}` | null>(null);
+
   const titleRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const optionRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
+  const formulaInputRef = useRef<HTMLInputElement>(null);
+
+  // Insert formula into modal input
+  const insertFormula = (formula: string) => {
+    if (formulaInputRef.current) {
+      const input = formulaInputRef.current;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const newText = formulaInput.substring(0, start) + formula + formulaInput.substring(end);
+      setFormulaInput(newText);
+      
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + formula.length, start + formula.length);
+      }, 0);
+    }
+  };
+
+  // Insert formula from modal to target field
+  const insertFormulaToField = () => {
+    if (!formulaInput.trim() || !targetFormulaField) return;
+
+    if (targetFormulaField === 'title' && titleRef.current) {
+      const input = titleRef.current;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const newValue = examTitle.substring(0, start) + formulaInput + examTitle.substring(end);
+      setExamTitle(newValue);
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + formulaInput.length, start + formulaInput.length);
+      }, 0);
+    } else if (targetFormulaField === 'content' && contentRef.current) {
+      const input = contentRef.current;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const currentContent = currentQuestion.content || '';
+      const newValue = currentContent.substring(0, start) + formulaInput + currentContent.substring(end);
+      setCurrentQuestion({ ...currentQuestion, content: newValue });
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + formulaInput.length, start + formulaInput.length);
+      }, 0);
+    } else if (targetFormulaField?.startsWith('option-')) {
+      const optionIdx = parseInt(targetFormulaField.split('-')[1]);
+      if (optionRefs.current[optionIdx]) {
+        const input = optionRefs.current[optionIdx]!;
+        const start = input.selectionStart ?? 0;
+        const end = input.selectionEnd ?? 0;
+        const options = [...(currentQuestion.options || [])];
+        const newValue = options[optionIdx].substring(0, start) + formulaInput + options[optionIdx].substring(end);
+        options[optionIdx] = newValue;
+        setCurrentQuestion({ ...currentQuestion, options });
+        setTimeout(() => {
+          if (optionRefs.current[optionIdx]) {
+            optionRefs.current[optionIdx]!.focus();
+            optionRefs.current[optionIdx]!.setSelectionRange(start + formulaInput.length, start + formulaInput.length);
+          }
+        }, 0);
+      }
+    }
+
+    setFormulaInput('');
+    setShowFormulaModal(false);
+    setTargetFormulaField(null);
+  };
+
+  // Open formula modal for a specific field
+  const openFormulaModal = (fieldType: typeof targetFormulaField) => {
+    setTargetFormulaField(fieldType);
+    setShowFormulaModal(true);
+    setFormulaInput('');
+  };
 
   // Insert symbol vào focused input
   const insertSymbol = (symbol: string) => {
@@ -397,6 +475,14 @@ export default function ComposeExamPage() {
                   />
                   <div className="flex flex-col items-center gap-2 pt-1">
                     <MathSymbolPicker onSymbolSelect={insertSymbol} />
+                    <button
+                      type="button"
+                      onClick={() => openFormulaModal('content')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-semibold transition"
+                      title="Chèn công thức"
+                    >
+                      ∑ Công thức
+                    </button>
                     <label className="text-center">
                       <input
                         type="file"
@@ -650,6 +736,114 @@ export default function ComposeExamPage() {
           </div>
         </div>
       </div>
+
+      {/* Formula Editor Modal */}
+      {showFormulaModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-black">Soạn thảo công thức</h2>
+              <button
+                onClick={() => {
+                  setShowFormulaModal(false);
+                  setFormulaInput('');
+                  setTargetFormulaField(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Formula Input */}
+            <input
+              ref={formulaInputRef}
+              type="text"
+              value={formulaInput}
+              onChange={(e) => setFormulaInput(e.target.value)}
+              placeholder="Nhập hoặc chèn công thức..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+            />
+
+            {/* Math Keyboard */}
+            <div className="bg-gray-100 p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-8 gap-2">
+                {/* Row 1 - Roots and Powers */}
+                <button onClick={() => insertFormula('√')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">√</button>
+                <button onClick={() => insertFormula('∛')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∛</button>
+                <button onClick={() => insertFormula('∜')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∜</button>
+                <button onClick={() => insertFormula('^')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">^</button>
+                <button onClick={() => insertFormula('x²')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">x²</button>
+                <button onClick={() => insertFormula('x³')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">x³</button>
+                <button onClick={() => insertFormula('π')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">π</button>
+                <button onClick={() => insertFormula('e')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">e</button>
+
+                {/* Row 2 - Basic Operators */}
+                <button onClick={() => insertFormula('+')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">+</button>
+                <button onClick={() => insertFormula('−')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">−</button>
+                <button onClick={() => insertFormula('×')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">×</button>
+                <button onClick={() => insertFormula('÷')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">÷</button>
+                <button onClick={() => insertFormula('=')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">=</button>
+                <button onClick={() => insertFormula('≠')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">≠</button>
+                <button onClick={() => insertFormula('≈')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">≈</button>
+                <button onClick={() => insertFormula('±')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">±</button>
+
+                {/* Row 3 - Comparison and Brackets */}
+                <button onClick={() => insertFormula('<')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">&lt;</button>
+                <button onClick={() => insertFormula('>')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">&gt;</button>
+                <button onClick={() => insertFormula('≤')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">≤</button>
+                <button onClick={() => insertFormula('≥')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">≥</button>
+                <button onClick={() => insertFormula('(')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">(</button>
+                <button onClick={() => insertFormula(')')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">)</button>
+                <button onClick={() => insertFormula('[')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">[</button>
+                <button onClick={() => insertFormula(']')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">]</button>
+
+                {/* Row 4 - Calculus and Greek Letters */}
+                <button onClick={() => insertFormula('∞')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∞</button>
+                <button onClick={() => insertFormula('∑')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∑</button>
+                <button onClick={() => insertFormula('∏')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∏</button>
+                <button onClick={() => insertFormula('∫')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∫</button>
+                <button onClick={() => insertFormula('∂')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∂</button>
+                <button onClick={() => insertFormula('∇')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∇</button>
+                <button onClick={() => insertFormula('α')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">α</button>
+                <button onClick={() => insertFormula('β')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">β</button>
+
+                {/* Row 5 - Greek Letters */}
+                <button onClick={() => insertFormula('γ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">γ</button>
+                <button onClick={() => insertFormula('δ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">δ</button>
+                <button onClick={() => insertFormula('ε')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">ε</button>
+                <button onClick={() => insertFormula('θ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">θ</button>
+                <button onClick={() => insertFormula('λ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">λ</button>
+                <button onClick={() => insertFormula('μ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">μ</button>
+                <button onClick={() => insertFormula('ρ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">ρ</button>
+                <button onClick={() => insertFormula('σ')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">σ</button>
+
+                {/* Row 6 - Set and Logic Symbols */}
+                <button onClick={() => insertFormula('∪')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∪</button>
+                <button onClick={() => insertFormula('∩')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∩</button>
+                <button onClick={() => insertFormula('⊂')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">⊂</button>
+                <button onClick={() => insertFormula('⊃')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">⊃</button>
+                <button onClick={() => insertFormula('∈')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∈</button>
+                <button onClick={() => insertFormula('∉')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∉</button>
+                <button onClick={() => insertFormula('∅')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">∅</button>
+                <button onClick={() => insertFormula('°')} className="bg-gray-400 text-white p-2 rounded text-sm font-semibold hover:bg-gray-500 transition">°</button>
+              </div>
+            </div>
+
+            {/* Insert Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={insertFormulaToField}
+                disabled={!formulaInput.trim()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Chèn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </TeacherLayout>
   );
 }

@@ -129,69 +129,76 @@ export default function ClassListPage() {
             Không tìm thấy lớp nào phù hợp
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-visible">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left p-4 font-semibold text-gray-700">Tên lớp</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Mã lớp</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Số học sinh</th>
-                  <th className="text-left p-4 font-semibold text-gray-700">Ngày tạo</th>
-                  <th className="text-right p-4 font-semibold text-gray-700">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredClasses.map((cls) => (
-                  <tr 
-                    key={cls._id} 
-                    className="border-b hover:bg-gray-50 transition cursor-pointer"
-                    onClick={() => router.push(`/teacher/classes/${cls._id}/members`)}
-                  >
-                    <td className="p-4 font-semibold text-gray-900">{cls.name}</td>
-                    <td className="p-4 text-gray-600">
-                      <span className="bg-gray-100 px-3 py-1 rounded text-sm font-mono">
-                        {cls.code}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600">{cls.studentCount}</td>
-                    <td className="p-4 text-gray-600">
-                      {new Date(cls.createdAt).toLocaleDateString('vi-VN')}
-                    </td>
-                    <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative" ref={openMenuId === cls._id ? menuRef : null}>
-                        <button
-                          onClick={() => setOpenMenuId(openMenuId === cls._id ? null : cls._id)}
-                          className="p-2 hover:bg-gray-300 rounded transition text-gray-700 font-bold text-lg"
-                          title="Thêm tùy chọn"
-                        >
-                          ⋮
-                        </button>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {filteredClasses.map((cls) => (
+              <div
+                key={cls._id}
+                className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
+                onClick={() => router.push(`/teacher/classes/${cls._id}/members`)}
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-lg font-bold text-gray-900">{cls.name}</h3>
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === cls._id ? null : cls._id);
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition text-gray-700 font-bold text-lg"
+                        title="Thêm tùy chọn"
+                      >
+                        ⋮
+                      </button>
 
-                        {openMenuId === cls._id && (
-                          <div className="absolute right-0 top-10 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
-                            <button
-                              onClick={() => {
-                                router.push(`/teacher/classes/${cls._id}/edit`);
-                                setOpenMenuId(null);
-                              }}
-                              className="w-full text-left px-4 py-2 hover:bg-gray-50 text-black border-b"
-                            >
-                              Sửa lớp
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClass(cls._id)}
-                              className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
-                            >
-                              Xóa lớp
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      {openMenuId === cls._id && (
+                        <div className="absolute right-0 top-8 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/teacher/classes/${cls._id}/edit`);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-gray-50 text-black border-b"
+                          >
+                            Sửa lớp
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClass(cls._id);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-red-50 text-red-600"
+                          >
+                            Xóa lớp
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500 uppercase font-semibold">
+                        Mã lớp:
+                      </p>
+                      <p className="bg-gray-100 px-3 py-1 rounded text-sm font-mono text-gray-700">
+                        {cls.code}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500 uppercase font-semibold">
+                        Sĩ số:
+                      </p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {cls.studentCount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

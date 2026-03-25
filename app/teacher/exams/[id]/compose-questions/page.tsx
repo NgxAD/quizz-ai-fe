@@ -139,7 +139,7 @@ export default function ComposeQuestionsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Exam Info */}
             <div className="lg:col-span-2">
-              <h2 className="text-sm font-bold text-gray-900 mb-3">📋 Thông tin đề</h2>
+              <h2 className="text-sm font-bold text-gray-900 mb-3">Thông tin đề</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <div>
                   <p className="text-xs text-gray-600 font-semibold">Tên</p>
@@ -177,14 +177,14 @@ export default function ComposeQuestionsPage() {
 
             {/* Right: Action Buttons */}
             <div className="lg:col-span-1">
-              <h2 className="text-sm font-bold text-gray-900 mb-3">⚡ Hành động</h2>
+              <h2 className="text-sm font-bold text-gray-900 mb-3">Hành động</h2>
               <div className="space-y-2">
                 <button
                   onClick={handleSaveQuestions}
                   disabled={saving || questions.length === 0}
                   className="w-full bg-blue-600 text-white px-3 py-2 rounded-lg font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  {saving ? '⏳ Lưu...' : '💾 Lưu & tiếp'}
+                  {saving ? 'Lưu...' : 'Lưu & tiếp'}
                 </button>
 
                 <button
