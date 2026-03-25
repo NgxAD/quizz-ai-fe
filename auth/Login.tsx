@@ -166,6 +166,11 @@ export default function Login() {
                 placeholder="••••••••"
                 required
               />
+              <div className="mt-2 text-right">
+                <Link href="/forgot-password" className="text-sm text-blue-500 hover:text-blue-700">
+                  Quên mật khẩu?
+                </Link>
+              </div>
             </div>
 
             <button

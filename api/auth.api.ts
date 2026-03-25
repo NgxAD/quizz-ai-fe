@@ -12,6 +12,21 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RequestPasswordResetPayload {
+  email: string;
+}
+
+export interface VerifyResetCodePayload {
+  email: string;
+  code: string;
+}
+
+export interface ResetPasswordPayload {
+  email: string;
+  code: string;
+  password: string;
+}
+
 export interface UpdateProfileResponse {
   message: string;
   user: {
@@ -62,6 +77,15 @@ const authApi = {
 
   updateProfile: (payload: any) =>
     axiosClient.patch<UpdateProfileResponse>('/auth/profile', payload),
+
+  requestPasswordReset: (payload: RequestPasswordResetPayload) =>
+    axiosClient.post('/auth/request-password-reset', payload),
+
+  verifyResetCode: (payload: VerifyResetCodePayload) =>
+    axiosClient.post('/auth/verify-reset-code', payload),
+
+  resetPassword: (payload: ResetPasswordPayload) =>
+    axiosClient.post('/auth/reset-password', payload),
 
   logout: () => {
     // Clear token from cookies
